@@ -106,6 +106,8 @@ const Profile = () => {
                   value={formData.email}
                   onChange={handleChange}
                   required
+                  disabled
+                  style={{opacity: 0.5, cursor: "not-allowed"}}
                 />
               </div>
               <div className="col-md-6">

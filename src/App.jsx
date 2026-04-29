@@ -27,9 +27,9 @@ function App() {
             <Route path="/register" element={<Register />} />
           </Routes>
         </main>
-        
-        <footer className="text-center py-4 mt-auto text-muted border-top border-secondary">
-          <p className="mb-0">© 2026 FiveTickets</p>
+
+        <footer className="text-center py-2 mt-auto text-muted border-top border-secondary">
+          <p className="mb-0 small">© 2026 FiveTickets</p>
         </footer>
       </div>
     </Router>

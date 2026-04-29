@@ -133,59 +133,86 @@ const EventDetail = () => {
               <Ticket size={24} className="text-primary"/> Thông tin Vé
             </h4>
 
-            {event.ticketTypes && event.ticketTypes.length > 0 ? (
-              <div className="d-flex flex-column gap-3 mb-4">
-                {event.ticketTypes.map(tt => (
-                  <div key={tt.id} className="p-3 border border-secondary rounded bg-dark">
-                    <div className="d-flex justify-content-between align-items-start mb-2">
-                      <div>
-                        <h6 className="fw-bold mb-1">{tt.name}</h6>
-                        <small className="text-muted">{tt.description || 'Vé tiêu chuẩn'}</small>
-                      </div>
-                      <span className="text-primary fw-bold fs-5">
-                        {tt.price.toLocaleString('vi-VN')}đ
-                      </span>
-                    </div>
-                    <div className="d-flex justify-content-between align-items-center mt-3">
-                      <span className="small text-muted">Còn lại: {tt.remainingQuantity}</span>
-                      <div className="d-flex align-items-center gap-2">
-                        <button 
-                          className="btn btn-sm btn-outline-secondary rounded-circle"
-                          onClick={() => handleTicketChange(tt.id, Math.max(0, (selectedTickets[tt.id] || 0) - 1))}
-                        >-</button>
-                        <span className="px-2">{selectedTickets[tt.id] || 0}</span>
-                        <button 
-                          className="btn btn-sm btn-outline-secondary rounded-circle"
-                          onClick={() => handleTicketChange(tt.id, Math.min(tt.remainingQuantity, (selectedTickets[tt.id] || 0) + 1))}
-                        >+</button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted">Sự kiện chưa mở bán vé.</p>
-            )}
-
-            <div className="d-flex flex-column gap-2 mt-4">
-              <button 
-                className="btn btn-outline-light py-2 rounded-pill shadow-sm"
-                onClick={handleAddToCart}
-                disabled={!event.ticketTypes || event.ticketTypes.length === 0}
-              >
-                <PlusCircle size={20} className="me-2" />
-                Thêm vào giỏ
-              </button>
+            {(() => {
+              const now = new Date();
+              const saleStart = event.saleStartDate ? new Date(event.saleStartDate) : null;
+              const saleEnd = event.saleEndDate ? new Date(event.saleEndDate) : null;
               
-              <button 
-                className="btn btn-gradient py-3 rounded-pill fs-5 shadow-lg"
-                onClick={handleBuyNow}
-                disabled={!event.ticketTypes || event.ticketTypes.length === 0}
-              >
-                <ShoppingCart size={20} className="me-2" />
-                Mua ngay
-              </button>
-            </div>
+              let isSaleStarted = !saleStart || now >= saleStart;
+              let isSaleEnded = saleEnd && now > saleEnd;
+              let canBuy = isSaleStarted && !isSaleEnded && event.ticketTypes?.length > 0;
+
+              return (
+                <>
+                  {event.ticketTypes && event.ticketTypes.length > 0 ? (
+                    <div className="d-flex flex-column gap-3 mb-4">
+                      {event.ticketTypes.map(tt => (
+                        <div key={tt.id} className="p-3 border border-secondary rounded bg-dark">
+                          <div className="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                              <h6 className="fw-bold mb-1">{tt.name}</h6>
+                              <small className="text-muted">{tt.description || 'Vé tiêu chuẩn'}</small>
+                            </div>
+                            <span className="text-primary fw-bold fs-5">
+                              {tt.price.toLocaleString('vi-VN')}đ
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between align-items-center mt-3">
+                            <span className="small text-muted">Còn lại: {tt.remainingQuantity}</span>
+                            <div className="d-flex align-items-center gap-2">
+                              <button 
+                                className="btn btn-sm btn-outline-secondary rounded-circle"
+                                onClick={() => handleTicketChange(tt.id, Math.max(0, (selectedTickets[tt.id] || 0) - 1))}
+                                disabled={!canBuy}
+                              >-</button>
+                              <span className="px-2">{selectedTickets[tt.id] || 0}</span>
+                              <button 
+                                className="btn btn-sm btn-outline-secondary rounded-circle"
+                                onClick={() => handleTicketChange(tt.id, Math.min(tt.remainingQuantity, (selectedTickets[tt.id] || 0) + 1))}
+                                disabled={!canBuy}
+                              >+</button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted">Sự kiện chưa có thông tin vé.</p>
+                  )}
+
+                  {!isSaleStarted && (
+                    <div className="alert alert-info py-2 mb-3">
+                      <small>Sắp mở bán: {saleStart.toLocaleString('vi-VN')}</small>
+                    </div>
+                  )}
+                  {isSaleEnded && (
+                    <div className="alert alert-danger py-2 mb-3">
+                      <small>Đã kết thúc thời gian bán vé</small>
+                    </div>
+                  )}
+
+                  <div className="d-flex flex-column gap-2 mt-2">
+                    <button 
+                      className="btn btn-outline-light py-2 rounded-pill shadow-sm"
+                      onClick={handleAddToCart}
+                      disabled={!canBuy}
+                    >
+                      <PlusCircle size={20} className="me-2" />
+                      Thêm vào giỏ
+                    </button>
+                    
+                    <button 
+                      className="btn btn-gradient py-3 rounded-pill fs-5 shadow-lg"
+                      onClick={handleBuyNow}
+                      disabled={!canBuy}
+                    >
+                      <ShoppingCart size={20} className="me-2" />
+                      {isSaleEnded ? 'Đã kết thúc' : !isSaleStarted ? 'Chưa mở bán' : 'Mua ngay'}
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       </div>

@@ -81,7 +81,7 @@ const MyTickets = () => {
           <div className="text-center py-5 text-muted glass-card mx-auto" style={{ maxWidth: '600px' }}>
             <Ticket size={48} className="mb-3 opacity-50" />
             <h4>Bạn chưa mua vé nào.</h4>
-            <p>Hãy khám phá các sự kiện hấp dẫn và đặt vé ngay nhé!</p>
+            <p>Hãy khám phá các sự kiện và đặt vé</p>
             <Link to="/" className="btn btn-gradient px-4 py-2 rounded-pill mt-3">Khám phá sự kiện</Link>
           </div>
         ) : (
@@ -113,10 +113,9 @@ const MyTickets = () => {
                     <h6 className="fw-bold text-muted mb-4 d-flex align-items-center gap-2">
                       <QrCode size={18} /> Danh sách vé điện tử
                     </h6>
-                    <p className="small text-muted mb-3">Mã vé đã được gửi vào Email của bạn. Dưới đây là thông tin tra cứu nhanh:</p>
-                    {/* Note: In a real app, tickets might be fetched separately or included in order items */}
+                    <p className="small text-muted mb-3">Hóa đơn và mã vé đã được gửi vào Email của bạn</p>
                     <div className="alert alert-info bg-dark border-info text-info small">
-                        Hệ thống đã xuất hóa đơn điện tử cho đơn hàng này. Vui lòng kiểm tra Email để nhận mã QR code check-in.
+                        Hệ thống đã xuất hóa đơn điện tử cho đơn hàng này. Vui lòng kiểm tra Email.
                     </div>
                   </div>
                 </div>

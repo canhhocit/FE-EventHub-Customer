@@ -15,7 +15,7 @@ const Cart = () => {
     <div className="container py-4">
       <div className="d-flex justify-content-between align-items-center mb-4 animate-fade-up">
         <h2 className="fw-bold mb-0 d-flex align-items-center gap-2">
-          <ShoppingCart size={28} className="text-primary" /> Giỏ hàng của bạn
+          <ShoppingCart size={28} className="text-primary" /> Giỏ hàng 
         </h2>
         {cart.length > 0 && (
           <button className="btn btn-outline-danger btn-sm rounded-pill px-3" onClick={clearCart}>
@@ -87,12 +87,8 @@ const Cart = () => {
                 </div>
               </div>
             </div>
-
-            {/* Khung Tóm tắt Đơn hàng */}
             <div className="col-lg-4 animate-fade-up" style={{ animationDelay: '0.1s' }}>
               <div className="glass-card p-4 sticky-top" style={{ top: '100px' }}>
-                <h5 className="fw-bold mb-4">Tóm tắt đơn hàng</h5>
-                
                 <div className="d-flex justify-content-between mb-3 text-muted">
                   <span>Tổng số vé:</span>
                   <span className="fw-bold">{cart.reduce((total, i) => total + i.quantity, 0)}</span>

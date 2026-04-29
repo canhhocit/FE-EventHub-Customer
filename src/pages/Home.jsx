@@ -47,9 +47,8 @@ const Home = () => {
   return (
     <div className="container py-4">
       {/* Hero Section */}
-      <div className="text-center mb-5 animate-fade-up">
+      <div className="text-center mb-2 animate-fade-up">
         <h1 className="display-4 fw-bold mb-3">Khám phá <span className="text-gradient">Sự kiện</span></h1>
-        <p className="text-muted fs-5">Tìm kiếm và đặt vé sự kiện</p>
       </div>
 
       {/* Filter Section */}
@@ -72,7 +71,7 @@ const Home = () => {
               value={province}
               onChange={(e) => setProvince(e.target.value)}
             >
-              <option value="">Tất cả tỉnh/thành</option>
+              <option value="">Tất cả tỉnh/TP</option>
               {VIETNAM_PROVINCES.map((p) => (
                 <option key={p} value={p}>{p}</option>
               ))}

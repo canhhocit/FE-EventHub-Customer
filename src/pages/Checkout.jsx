@@ -30,11 +30,24 @@ const Checkout = () => {
   const handleApplyVoucher = async () => {
     if (!voucherCode) return;
     try {
-      alert("Đã áp dụng mã giảm giá thành công!");
-      setDiscountAmount(subtotal * 0.1); // Giảm 10%
+      const token = localStorage.getItem('token');
+      const eventId = cart[0]?.eventId;
+      const response = await fetch(`http://localhost:8080/vouchers/validate?code=${voucherCode}&amount=${subtotal}&eventId=${eventId || ''}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      
+      if (data.result !== undefined) {
+        setDiscountAmount(data.result);
+        alert(`Áp dụng mã giảm giá thành công! Giảm: ${data.result.toLocaleString('vi-VN')}đ`);
+      } else {
+        alert(data.message || "Mã giảm giá không hợp lệ hoặc đã hết hạn");
+      }
     } catch (error) {
       console.error(error);
-      alert("Mã giảm giá không hợp lệ");
+      alert("Lỗi khi kiểm tra mã giảm giá");
     }
   };
 
