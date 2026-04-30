@@ -58,7 +58,7 @@ const ForgotPassword = () => {
       });
       const data = await response.json();
       if (data.code === 1000) {
-        setMessage('Đổi mật khẩu thành công! Bạn sẽ được chuyển về trang đăng nhập.');
+        setMessage('Đổi mật khẩu thành công! Đang chuyển hướng...');
         setTimeout(() => navigate('/login'), 2000);
       } else {
         setError(data.message || 'Lỗi khi đặt lại mật khẩu.');
