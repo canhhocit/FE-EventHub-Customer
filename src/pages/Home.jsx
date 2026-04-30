@@ -6,6 +6,8 @@ import { VIETNAM_PROVINCES, getImageUrl } from '../utils/constants';
 const Home = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   
   // States cho bộ lọc
   const [search, setSearch] = useState('');
@@ -18,6 +20,8 @@ const Home = () => {
     try {
       // Build query string
       const params = new URLSearchParams();
+      params.append('page', page);
+      params.append('size', 10);
       if (search) params.append('name', search);
       if (province) params.append('provinceCode', province);
       if (minPrice) params.append('minPrice', minPrice);
@@ -27,6 +31,7 @@ const Home = () => {
       const data = await response.json();
       if (data.code === 1000) {
         setEvents(data.result.content || []);
+        setTotalPages(data.result.totalPages || 1);
       }
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -37,10 +42,11 @@ const Home = () => {
 
   useEffect(() => {
     fetchEvents();
-  }, []);
+  }, [page]);
 
   const handleFilter = (e) => {
     e.preventDefault();
+    setPage(1);
     fetchEvents();
   };
 
@@ -106,7 +112,7 @@ const Home = () => {
       </div>
 
       {/* Events Grid */}
-      <div className="row g-4">
+      <div className="row g-3 row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
         {loading ? (
           <div className="text-center py-5">
             <div className="spinner-border text-primary" role="status">
@@ -119,7 +125,7 @@ const Home = () => {
           </div>
         ) : (
           events.map((event, index) => (
-            <div key={event.id} className="col-12 col-md-6 col-lg-4 animate-fade-up" style={{ animationDelay: `${0.1 * (index + 2)}s` }}>
+            <div key={event.id} className="col animate-fade-up" style={{ animationDelay: `${0.05 * index}s` }}>
               <div className="card glass-card h-100 border-0 overflow-hidden">
                 <img 
                   src={getImageUrl(event.imageUrls?.[0])} 
@@ -154,6 +160,29 @@ const Home = () => {
           ))
         )}
       </div>
+
+      {/* Pagination */}
+      {!loading && totalPages > 1 && (
+        <div className="d-flex justify-content-center mt-5 gap-2">
+          <button 
+            className="btn btn-outline-primary rounded-pill px-4"
+            disabled={page === 1}
+            onClick={() => setPage(p => p - 1)}
+          >
+            Trước
+          </button>
+          <div className="d-flex align-items-center px-3 fw-bold">
+            Trang {page} / {totalPages}
+          </div>
+          <button 
+            className="btn btn-outline-primary rounded-pill px-4"
+            disabled={page === totalPages}
+            onClick={() => setPage(p => p + 1)}
+          >
+            Sau
+          </button>
+        </div>
+      )}
     </div>
   );
 };

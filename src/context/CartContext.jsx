@@ -30,7 +30,8 @@ export const CartProvider = ({ children }) => {
           ticketTypeId: item.ticketTypeId,
           ticketTypeName: item.ticketTypeName,
           price: item.unitPrice,
-          quantity: item.quantity
+          quantity: item.quantity,
+          saleEndDate: item.saleEndDate
         }));
         setCart(items);
       }

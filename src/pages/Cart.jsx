@@ -1,14 +1,45 @@
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, Trash2, ArrowRight } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { getImageUrl } from '../utils/constants';
 
 const Cart = () => {
-  const { cart, removeFromCart, getCartTotal, clearCart } = useCart();
+  const { cart, removeFromCart, clearCart } = useCart();
   const navigate = useNavigate();
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  // Tự động chọn tất cả khi vào trang
+  useEffect(() => {
+    if (cart.length > 0 && selectedIds.length === 0) {
+      setSelectedIds(cart.map(item => item.cartItemId));
+    }
+  }, [cart]);
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === cart.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(cart.map(item => item.cartItemId));
+    }
+  };
+
+  const selectedItems = cart.filter(item => selectedIds.includes(item.cartItemId));
+  const selectedTotal = selectedItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+  const selectedCount = selectedItems.reduce((total, item) => total + item.quantity, 0);
 
   const handleCheckout = () => {
-    navigate('/checkout');
+    if (selectedIds.length === 0) {
+      alert("Vui lòng chọn ít nhất một mục để thanh toán!");
+      return;
+    }
+    navigate('/checkout', { state: { selectedCartItemIds: selectedIds } });
   };
 
   return (
@@ -44,6 +75,14 @@ const Cart = () => {
                   <table className="table table-dark table-borderless table-hover align-middle mb-0">
                     <thead>
                       <tr className="border-bottom border-secondary">
+                        <th scope="col" style={{ width: '40px' }}>
+                          <input 
+                            type="checkbox" 
+                            className="form-check-input cursor-pointer"
+                            checked={selectedIds.length === cart.length && cart.length > 0}
+                            onChange={toggleSelectAll}
+                          />
+                        </th>
                         <th scope="col">Sự kiện / Loại vé</th>
                         <th scope="col" className="text-center">Đơn giá</th>
                         <th scope="col" className="text-center">Số lượng</th>
@@ -55,13 +94,28 @@ const Cart = () => {
                       {cart.map((item, idx) => (
                         <tr key={idx} className="border-bottom border-secondary">
                           <td>
+                            <input 
+                              type="checkbox" 
+                              className="form-check-input cursor-pointer"
+                              checked={selectedIds.includes(item.cartItemId)}
+                              onChange={() => toggleSelect(item.cartItemId)}
+                            />
+                          </td>
+                          <td>
                             <div className="d-flex align-items-center gap-3 py-2">
                               {item.eventImage && (
                                 <img src={getImageUrl(item.eventImage)} alt="Event" className="rounded" style={{ width: '60px', height: '60px', objectFit: 'cover' }} />
                               )}
                               <div>
                                 <h6 className="mb-1 fw-bold text-truncate" style={{ maxWidth: '200px' }}>{item.eventName}</h6>
-                                <span className="badge bg-secondary">{item.ticketTypeName}</span>
+                                <div className="d-flex align-items-center gap-2">
+                                  <span className="badge bg-secondary">{item.ticketTypeName}</span>
+                                  {item.saleEndDate && new Date(item.saleEndDate) < new Date() && (
+                                    <span className="text-danger small fw-bold">
+                                      (Hết hạn bán - Hãy xóa)
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -90,22 +144,23 @@ const Cart = () => {
             <div className="col-lg-4 animate-fade-up" style={{ animationDelay: '0.1s' }}>
               <div className="glass-card p-4 sticky-top" style={{ top: '100px' }}>
                 <div className="d-flex justify-content-between mb-3 text-muted">
-                  <span>Tổng số vé:</span>
-                  <span className="fw-bold">{cart.reduce((total, i) => total + i.quantity, 0)}</span>
+                  <span>Vé đã chọn:</span>
+                  <span className="fw-bold">{selectedCount}</span>
                 </div>
                 
                 <hr className="border-secondary" />
                 
                 <div className="d-flex justify-content-between mb-4">
-                  <span className="fw-bold fs-5">Tổng tiền:</span>
-                  <span className="fw-bold fs-4 text-gradient">{getCartTotal().toLocaleString('vi-VN')}đ</span>
+                  <span className="fw-bold fs-5">Tạm tính:</span>
+                  <span className="fw-bold fs-4 text-gradient">{selectedTotal.toLocaleString('vi-VN')}đ</span>
                 </div>
 
                 <button 
-                  className="btn btn-gradient w-100 py-3 rounded-pill fs-5 shadow-lg d-flex align-items-center justify-content-center gap-2"
+                  className={`btn ${selectedIds.length > 0 ? 'btn-gradient' : 'btn-secondary'} w-100 py-3 rounded-pill fs-5 shadow-lg d-flex align-items-center justify-content-center gap-2`}
                   onClick={handleCheckout}
+                  disabled={selectedIds.length === 0}
                 >
-                  Thanh toán ngay <ArrowRight size={20} />
+                  Thanh toán ({selectedIds.length}) <ArrowRight size={20} />
                 </button>
                 <Link to="/" className="btn btn-outline-light w-100 py-2 rounded-pill mt-3">
                   Tiếp tục chọn vé

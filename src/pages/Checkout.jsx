@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { CreditCard, Tag, CheckCircle } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
 const Checkout = () => {
   const navigate = useNavigate();
-  const { cart, getCartTotal, clearCart } = useCart();
+  const location = useLocation();
+  const { cart, fetchBackendCart } = useCart();
+  
+  const selectedCartItemIds = location.state?.selectedCartItemIds || [];
+  const checkoutItems = cart.filter(item => selectedCartItemIds.includes(item.cartItemId));
   
   const [voucherCode, setVoucherCode] = useState('');
   const [discountAmount, setDiscountAmount] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState('CREDIT_CARD');
+  const [paymentMethod, setPaymentMethod] = useState('MOMO');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -20,22 +24,33 @@ const Checkout = () => {
       navigate('/login');
       return;
     }
-    if (cart.length === 0 && !success) {
+    if (checkoutItems.length === 0 && !success) {
       navigate('/cart');
     }
-  }, [cart, navigate, success]);
+  }, [checkoutItems, navigate, success]);
 
-  const subtotal = getCartTotal();
+  const subtotal = checkoutItems.reduce((total, item) => total + (item.price * item.quantity), 0);
 
   const handleApplyVoucher = async () => {
     if (!voucherCode) return;
     try {
       const token = localStorage.getItem('token');
-      const eventId = cart[0]?.eventId;
-      const response = await fetch(`http://localhost:8080/vouchers/validate?code=${voucherCode}&amount=${subtotal}&eventId=${eventId || ''}`, {
+      // Build event amounts map
+      const eventAmounts = {};
+      checkoutItems.forEach(item => {
+        eventAmounts[item.eventId] = (eventAmounts[item.eventId] || 0) + (item.price * item.quantity);
+      });
+
+      const response = await fetch(`http://localhost:8080/vouchers/validate`, {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          code: voucherCode,
+          eventAmounts: eventAmounts
+        })
       });
       const data = await response.json();
       
@@ -43,11 +58,11 @@ const Checkout = () => {
         setDiscountAmount(data.result);
         alert(`Áp dụng mã giảm giá thành công! Giảm: ${data.result.toLocaleString('vi-VN')}đ`);
       } else {
-        alert(data.message || "Mã giảm giá không hợp lệ hoặc đã hết hạn");
+        alert("Lỗi áp dụng mã: " + (data.message || "Mã không hợp lệ hoặc không áp dụng cho các mục đã chọn"));
       }
     } catch (error) {
       console.error(error);
-      alert("Lỗi khi kiểm tra mã giảm giá");
+      alert("Lỗi hệ thống: Không thể kết nối đến máy chủ để kiểm tra mã giảm giá");
     }
   };
 
@@ -55,27 +70,31 @@ const Checkout = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8080/bookings/checkout?paymentMethod=${paymentMethod}&voucherCode=${voucherCode}`, {
+      // Use checkout-selected if we have specific items
+      const response = await fetch(`http://localhost:8080/bookings/checkout-selected?paymentMethod=${paymentMethod}&voucherCode=${voucherCode}`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(selectedCartItemIds)
       });
       
       const data = await response.json();
       
       if (data.code === 1000) {
-        clearCart();
+        // Refresh cart from backend to remove paid items
+        await fetchBackendCart();
         setSuccess(true);
         setTimeout(() => {
           navigate('/my-tickets');
         }, 3000);
       } else {
-        alert("Lỗi: " + (data.message || "Thanh toán thất bại!"));
+        alert("Thanh toán thất bại: " + (data.message || "Vui lòng thử lại sau"));
       }
     } catch (error) {
       console.error('Checkout error:', error);
-      alert("Không thể kết nối đến máy chủ thanh toán!");
+      alert("Lỗi hệ thống: Không thể hoàn tất thanh toán do mất kết nối");
     } finally {
       setLoading(false);
     }
@@ -106,7 +125,7 @@ const Checkout = () => {
         <div className="col-lg-8 animate-fade-up">
           <div className="glass-card p-4 mb-4">
             <h5 className="fw-bold mb-4">Chi tiết vé</h5>
-            {cart.map((item, idx) => (
+            {checkoutItems.map((item, idx) => (
               <div key={idx} className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom border-secondary">
                 <div>
                   <h6 className="mb-1">{item.eventName}</h6>
@@ -120,35 +139,42 @@ const Checkout = () => {
           <div className="glass-card p-4">
             <h5 className="fw-bold mb-4">Phương thức thanh toán</h5>
             <div className="d-flex flex-column gap-3">
-              <label className="d-flex align-items-center gap-3 p-3 border border-secondary rounded cursor-pointer bg-dark">
-                <input 
-                  type="radio" 
-                  name="payment" 
-                  checked={paymentMethod === 'CREDIT_CARD'}
-                  onChange={() => setPaymentMethod('CREDIT_CARD')}
-                />
-                <CreditCard className="text-primary" />
-                <span>Thẻ tín dụng / Thẻ ghi nợ</span>
-              </label>
-              <label className="d-flex align-items-center gap-3 p-3 border border-secondary rounded cursor-pointer bg-dark">
+
+
+              <label className={`d-flex align-items-center gap-3 p-3 border rounded cursor-pointer transition-all ${paymentMethod === 'MOMO' ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary bg-dark'}`} onClick={() => setPaymentMethod('MOMO')}>
                 <input 
                   type="radio" 
                   name="payment" 
                   checked={paymentMethod === 'MOMO'}
                   onChange={() => setPaymentMethod('MOMO')}
+                  className="form-check-input mt-0"
                 />
-                <img src="https://upload.wikimedia.org/wikipedia/vi/f/fe/MoMo_Logo.png" width={24} alt="Momo" />
-                <span>Ví MoMo</span>
+                <img 
+                  src="https://cdn.haitrieu.com/wp-content/uploads/2022/10/Logo-MoMo-Square.png" 
+                  width={24} 
+                  height={24}
+                  alt="Momo" 
+                  className="rounded shadow-sm"
+                />
+                <span className="fw-medium">Momo</span>
               </label>
-              <label className="d-flex align-items-center gap-3 p-3 border border-secondary rounded cursor-pointer bg-dark">
+
+              <label className={`d-flex align-items-center gap-3 p-3 border rounded cursor-pointer transition-all ${paymentMethod === 'VNPAY' ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary bg-dark'}`} onClick={() => setPaymentMethod('VNPAY')}>
                 <input 
                   type="radio" 
                   name="payment" 
                   checked={paymentMethod === 'VNPAY'}
                   onChange={() => setPaymentMethod('VNPAY')}
+                  className="form-check-input mt-0"
                 />
-                <img src="https://vnpay.vn/s1/statics.vnpay.vn/2023/9/06ncktiwd6dc1694418189687.png" width={24} alt="VNPay" />
-                <span>Cổng thanh toán VNPAY</span>
+                <img 
+                  src="https://th.bing.com/th/id/OIP.pn3RUm1xk1HiAxWIgC6CIwHaHa?o=7rm=3&rs=1&pid=ImgDetMain&o=7&rm=3" 
+                  width={40} 
+                  height={24}
+                  alt="VNPay" 
+                  className="rounded object-fit-contain bg-white px-1"
+                />
+                <span className="fw-medium">Cổng thanh toán VNPAY</span>
               </label>
             </div>
           </div>
@@ -189,7 +215,7 @@ const Checkout = () => {
             <button 
               className="btn btn-gradient w-100 py-3 rounded-pill fs-5"
               onClick={handlePayment}
-              disabled={loading || cart.length === 0}
+              disabled={loading || checkoutItems.length === 0}
             >
               {loading ? (
                 <span className="spinner-border spinner-border-sm me-2"></span>
@@ -197,9 +223,6 @@ const Checkout = () => {
                 'Thanh toán'
               )}
             </button>
-            <p className="text-muted text-center small mt-3">
-              Bằng việc thanh toán, bạn đồng ý với Điều khoản và dịch vụ của chúng tôi.
-            </p>
           </div>
         </div>
       </div>

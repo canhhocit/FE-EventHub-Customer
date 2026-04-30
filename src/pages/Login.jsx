@@ -58,6 +58,11 @@ const Login = () => {
           <button type="submit" className="btn btn-gradient w-100 py-2 rounded-pill fs-5 shadow-lg" disabled={loading}>
             {loading ? <span className="spinner-border spinner-border-sm"></span> : 'Đăng nhập'}
           </button>
+          <div className="text-center mt-3">
+            <Link to="/forgot-password" size={14} className="text-muted text-decoration-none small hover-primary">
+              Quên mật khẩu?
+            </Link>
+          </div>
         </form>
         <p className="text-center mt-4 mb-0 text-muted">
           Chưa có tài khoản? <Link to="/register" className="text-primary text-decoration-none">Đăng ký ngay</Link>
