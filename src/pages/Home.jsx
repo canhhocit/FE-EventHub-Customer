@@ -15,7 +15,7 @@ const Home = () => {
   const [categoryId, setCategoryId] = useState('');
   const [categories, setCategories] = useState([]);
   const [minPrice, setMinPrice] = useState('');
-  const [maxPrice, setMaxPrice] = useState('');
+  // const [maxPrice, setMaxPrice] = useState('');
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -43,7 +43,7 @@ const Home = () => {
       if (province) params.append('province', province);
       if (categoryId) params.append('categoryId', categoryId);
       if (minPrice) params.append('minPrice', minPrice);
-      if (maxPrice) params.append('maxPrice', maxPrice);
+      // if (maxPrice) params.append('maxPrice', maxPrice);
 
       const response = await fetch(`http://localhost:8080/events/search?${params.toString()}`);
       const data = await response.json();
@@ -60,13 +60,16 @@ const Home = () => {
 
   useEffect(() => {
     fetchEvents();
-  }, [page]);
+  }, [page, province, categoryId, minPrice]); // removed maxPrice
 
-  const handleFilter = (e) => {
-    e.preventDefault();
-    setPage(1);
-    fetchEvents();
-  };
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1);
+      fetchEvents();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   return (
     <div className="container py-4">
@@ -77,8 +80,8 @@ const Home = () => {
 
       {/* Filter Section */}
       <div className="glass-card p-4 mb-5 animate-fade-up" style={{ animationDelay: '0.1s' }}>
-        <form onSubmit={handleFilter} className="row g-3 align-items-end">
-          <div className="col-md-3">
+        <div className="row g-3 align-items-end">
+          <div className="col-md-4">
             <label className="form-label text-muted small"><Search size={14} className="me-1"/> Từ khóa</label>
             <input 
               type="text" 
@@ -93,7 +96,7 @@ const Home = () => {
             <select 
               className="form-select bg-dark text-white border-secondary shadow-none"
               value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
+              onChange={(e) => { setCategoryId(e.target.value); setPage(1); }}
             >
               <option value="">Tất cả danh mục</option>
               {categories.map((c) => (
@@ -101,12 +104,12 @@ const Home = () => {
               ))}
             </select>
           </div>
-          <div className="col-md-2">
+          <div className="col-md-3">
             <label className="form-label text-muted small"><MapPin size={14} className="me-1"/> Tỉnh/TP</label>
             <select 
               className="form-select bg-dark text-white border-secondary shadow-none"
               value={province}
-              onChange={(e) => setProvince(e.target.value)}
+              onChange={(e) => { setProvince(e.target.value); setPage(1); }}
             >
               <option value="">Tất cả tỉnh/TP</option>
               {VIETNAM_PROVINCES.map((p) => (
@@ -121,15 +124,10 @@ const Home = () => {
               className="form-control bg-dark text-white border-secondary shadow-none" 
               placeholder="0"
               value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
+              onChange={(e) => { setMinPrice(e.target.value); setPage(1); }}
             />
           </div>
-          <div className="col-md-2">
-            <button type="submit" className="btn btn-gradient w-100 py-2">
-              Lọc kết quả
-            </button>
-          </div>
-        </form>
+        </div>
       </div>
 
       {/* Events Grid */}
