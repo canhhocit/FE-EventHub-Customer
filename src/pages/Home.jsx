@@ -12,8 +12,25 @@ const Home = () => {
   // States cho bộ lọc
   const [search, setSearch] = useState('');
   const [province, setProvince] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [categories, setCategories] = useState([]);
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('http://localhost:8080/categories');
+        const data = await response.json();
+        if (data.code === 1000) {
+          setCategories(data.result || []);
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -22,8 +39,9 @@ const Home = () => {
       const params = new URLSearchParams();
       params.append('page', page);
       params.append('size', 10);
-      if (search) params.append('name', search);
-      if (province) params.append('provinceCode', province);
+      if (search) params.append('keyword', search);
+      if (province) params.append('province', province);
+      if (categoryId) params.append('categoryId', categoryId);
       if (minPrice) params.append('minPrice', minPrice);
       if (maxPrice) params.append('maxPrice', maxPrice);
 
@@ -64,16 +82,29 @@ const Home = () => {
             <label className="form-label text-muted small"><Search size={14} className="me-1"/> Từ khóa</label>
             <input 
               type="text" 
-              className="form-control bg-dark text-white border-secondary" 
+              className="form-control bg-dark text-white border-secondary shadow-none" 
               placeholder="Tên sự kiện..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <div className="col-md-3">
-            <label className="form-label text-muted small"><MapPin size={14} className="me-1"/> Tỉnh/Thành phố</label>
+            <label className="form-label text-muted small"><Filter size={14} className="me-1"/> Danh mục</label>
             <select 
-              className="form-select bg-dark text-white border-secondary"
+              className="form-select bg-dark text-white border-secondary shadow-none"
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+            >
+              <option value="">Tất cả danh mục</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="col-md-2">
+            <label className="form-label text-muted small"><MapPin size={14} className="me-1"/> Tỉnh/TP</label>
+            <select 
+              className="form-select bg-dark text-white border-secondary shadow-none"
               value={province}
               onChange={(e) => setProvince(e.target.value)}
             >
@@ -87,25 +118,15 @@ const Home = () => {
             <label className="form-label text-muted small">Giá từ (VNĐ)</label>
             <input 
               type="number" 
-              className="form-control bg-dark text-white border-secondary" 
+              className="form-control bg-dark text-white border-secondary shadow-none" 
               placeholder="0"
               value={minPrice}
               onChange={(e) => setMinPrice(e.target.value)}
             />
           </div>
           <div className="col-md-2">
-            <label className="form-label text-muted small">Đến giá (VNĐ)</label>
-            <input 
-              type="number" 
-              className="form-control bg-dark text-white border-secondary" 
-              placeholder="Max"
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value)}
-            />
-          </div>
-          <div className="col-md-2">
-            <button type="submit" className="btn btn-gradient w-100">
-              <Filter size={18} className="me-2" /> Lọc
+            <button type="submit" className="btn btn-gradient w-100 py-2">
+              Lọc kết quả
             </button>
           </div>
         </form>
