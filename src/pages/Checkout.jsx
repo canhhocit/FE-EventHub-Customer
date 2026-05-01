@@ -13,7 +13,7 @@ const Checkout = () => {
   
   const [voucherCode, setVoucherCode] = useState('');
   const [discountAmount, setDiscountAmount] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState('MOMO');
+  const [paymentMethod, setPaymentMethod] = useState('PAYOS');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -83,6 +83,12 @@ const Checkout = () => {
       const data = await response.json();
       
       if (data.code === 1000) {
+        // If PayOS provides a payment URL, redirect to it
+        if (data.result && data.result.paymentUrl) {
+          window.location.href = data.result.paymentUrl;
+          return;
+        }
+
         // Refresh cart from backend to remove paid items
         await fetchBackendCart();
         setSuccess(true);
@@ -141,6 +147,24 @@ const Checkout = () => {
             <div className="d-flex flex-column gap-3">
 
 
+              <label className={`d-flex align-items-center gap-3 p-3 border rounded cursor-pointer transition-all ${paymentMethod === 'PAYOS' ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary bg-dark'}`} onClick={() => setPaymentMethod('PAYOS')}>
+                <input 
+                  type="radio" 
+                  name="payment" 
+                  checked={paymentMethod === 'PAYOS'}
+                  onChange={() => setPaymentMethod('PAYOS')}
+                  className="form-check-input mt-0"
+                />
+                <img 
+                  src="https://th.bing.com/th/id/OIP.7088OwVKnkxm9jJwOy8z5QHaHa?w=161&h=180&c=7&r=0&o=7&dpr=1.1&pid=1.7&rm=3" 
+                  height={40}
+                  width={40}
+                  alt="VietQR(PayOS)" 
+                  className="rounded object-fit-contain bg-white px-2"
+                />
+                <span className="fw-medium">VietQR</span>
+              </label>
+
               <label className={`d-flex align-items-center gap-3 p-3 border rounded cursor-pointer transition-all ${paymentMethod === 'MOMO' ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary bg-dark'}`} onClick={() => setPaymentMethod('MOMO')}>
                 <input 
                   type="radio" 
@@ -151,8 +175,8 @@ const Checkout = () => {
                 />
                 <img 
                   src="https://cdn.haitrieu.com/wp-content/uploads/2022/10/Logo-MoMo-Square.png" 
-                  width={24} 
-                  height={24}
+                  width={40} 
+                  height={40}
                   alt="Momo" 
                   className="rounded shadow-sm"
                 />
@@ -170,7 +194,7 @@ const Checkout = () => {
                 <img 
                   src="https://th.bing.com/th/id/OIP.pn3RUm1xk1HiAxWIgC6CIwHaHa?o=7rm=3&rs=1&pid=ImgDetMain&o=7&rm=3" 
                   width={40} 
-                  height={24}
+                  height={40}
                   alt="VNPay" 
                   className="rounded object-fit-contain bg-white px-1"
                 />

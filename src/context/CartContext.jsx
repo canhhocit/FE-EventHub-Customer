@@ -19,8 +19,17 @@ export const CartProvider = ({ children }) => {
       const response = await fetch('http://localhost:8080/cart', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          console.warn("Session expired. Please login again.");
+          // Optional: handle logout here
+        }
+        return;
+      }
+
       const data = await response.json();
-      if (data.code === 1000) {
+      if (data.code === 1000 && data.result) {
         // Map backend CartItem to frontend cart format
         const items = data.result.items.map(item => ({
           cartItemId: item.id,
