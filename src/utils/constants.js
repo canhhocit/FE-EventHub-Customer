@@ -22,7 +22,7 @@ export const VIETNAM_PROVINCES = [
   "Cà Mau"
 ];
 
-export const API_BASE_URL = "http://localhost:8080";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 export const getImageUrl = (imagePath) => {
   if (!imagePath) return 'https://images.unsplash.com/photo-1540553016722-983e48a2cd10?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80';
