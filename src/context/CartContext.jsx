@@ -1,4 +1,5 @@
 import { createContext, useState, useEffect, useContext } from 'react';
+import { API_BASE_URL } from '../utils/constants';
 
 import { useAuth } from './AuthContext';
 
@@ -16,7 +17,7 @@ export const CartProvider = ({ children }) => {
       return;
     }
     try {
-      const response = await fetch('http://localhost:8080/cart', {
+      const response = await fetch(`${API_BASE_URL}/cart`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -61,7 +62,7 @@ export const CartProvider = ({ children }) => {
     if (token) {
       for (const t of tickets) {
         try {
-          await fetch('http://localhost:8080/cart/add', {
+          await fetch(`${API_BASE_URL}/cart/add`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -111,7 +112,7 @@ export const CartProvider = ({ children }) => {
 
     if (token && itemToRemove?.cartItemId) {
       try {
-        await fetch(`http://localhost:8080/cart/items/${itemToRemove.cartItemId}`, {
+        await fetch(`${API_BASE_URL}/cart/items/${itemToRemove.cartItemId}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -125,7 +126,7 @@ export const CartProvider = ({ children }) => {
   const clearCart = () => {
     const token = localStorage.getItem('token');
     if (token) {
-      fetch('http://localhost:8080/cart/clear', {
+      fetch(`${API_BASE_URL}/cart/clear`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
