@@ -56,7 +56,7 @@ const Checkout = () => {
       
       if (data.result !== undefined) {
         setDiscountAmount(data.result);
-        alert(`Áp dụng mã giảm giá thành công! Giảm: ${data.result.toLocaleString('vi-VN')}đ`);
+        alert(`Áp mã thành công! Giảm: ${data.result.toLocaleString('vi-VN')}đ`);
       } else {
         alert("Lỗi áp dụng mã: " + (data.message || "Mã không hợp lệ hoặc không áp dụng cho các mục đã chọn"));
       }
@@ -84,17 +84,18 @@ const Checkout = () => {
       
       if (data.code === 1000) {
         // If PayOS provides a payment URL, redirect to it
-        if (data.result && data.result.paymentUrl) {
+        if (data.result && data.result.paymentUrl && paymentMethod === 'PAYOS') {
           window.location.href = data.result.paymentUrl;
           return;
         }
 
-        // Refresh cart from backend to remove paid items
+        // For MoMo or cases without external redirect, show success immediately
         await fetchBackendCart();
         setSuccess(true);
         setTimeout(() => {
           navigate('/my-tickets');
         }, 3000);
+        return;
       } else {
         alert("Thanh toán thất bại: " + (data.message || "Vui lòng thử lại sau"));
       }
@@ -180,25 +181,10 @@ const Checkout = () => {
                   alt="Momo" 
                   className="rounded shadow-sm"
                 />
-                <span className="fw-medium">Momo</span>
-              </label>
-
-              <label className={`d-flex align-items-center gap-3 p-3 border rounded cursor-pointer transition-all ${paymentMethod === 'VNPAY' ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary bg-dark'}`} onClick={() => setPaymentMethod('VNPAY')}>
-                <input 
-                  type="radio" 
-                  name="payment" 
-                  checked={paymentMethod === 'VNPAY'}
-                  onChange={() => setPaymentMethod('VNPAY')}
-                  className="form-check-input mt-0"
-                />
-                <img 
-                  src="https://th.bing.com/th/id/OIP.pn3RUm1xk1HiAxWIgC6CIwHaHa?o=7rm=3&rs=1&pid=ImgDetMain&o=7&rm=3" 
-                  width={40} 
-                  height={40}
-                  alt="VNPay" 
-                  className="rounded object-fit-contain bg-white px-1"
-                />
-                <span className="fw-medium">Cổng thanh toán VNPAY</span>
+                <div className="d-flex flex-column">
+                    <span className="fw-medium">Momo</span>
+                    <small className="text-warning">Giả lập</small>
+                </div>
               </label>
             </div>
           </div>
