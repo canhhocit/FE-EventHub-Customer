@@ -18,7 +18,7 @@ const Profile = () => {
     const fetchUserData = async () => {
       if (authUser) {
         try {
-          const data = await getProfile(authUser.username);
+          const data = await getProfile();
           if (data.code === 1000) {
             const u = data.result;
             setFormData({

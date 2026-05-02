@@ -70,11 +70,11 @@ export const cancelAndRestoreCart = (orderCode) =>
   });
 
 // Users
-export const getProfile = (username) => request(`/users/${username}`);
+export const getProfile = () => request('/users/my-info');
 
 export const updateProfile = (username, data) => 
   request(`/users/${username}`, {
-    method: 'PATCH',
+    method: 'PUT',
     body: JSON.stringify(data)
   });
 
