@@ -1,46 +1,40 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Ticket, QrCode, Download } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { Ticket, Download, Loader2 } from 'lucide-react';
+import { getMyBookings } from '../api/api';
+import { API_BASE_URL } from '../utils/constants';
 
 const MyTickets = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { token } = useAuth();
+  const [downloading, setDownloading] = useState(null);
 
   useEffect(() => {
-    const fetchMyOrders = async () => {
+    const fetchOrders = async () => {
       try {
-        const response = await fetch('http://localhost:8080/bookings', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        const data = await response.json();
+        const data = await getMyBookings();
         if (data.code === 1000) {
-          setOrders(data.result.content || []);
+          setOrders(data.result || []);
         }
       } catch (error) {
-        console.error("Failed to fetch tickets:", error);
+        console.error('Error fetching orders:', error);
       } finally {
         setLoading(false);
       }
     };
-
-    if (token) {
-      fetchMyOrders();
-    } else {
-      setLoading(false);
-    }
-  }, [token]);
+    fetchOrders();
+  }, []);
 
   const handleDownloadInvoice = async (orderId) => {
+    setDownloading(orderId);
     try {
-      const response = await fetch(`http://localhost:8080/bookings/${orderId}/invoice`, {
+      const token = localStorage.getItem('token');
+      // Special case for binary file download, still using fetch but with central URL
+      const response = await fetch(`${API_BASE_URL}/bookings/${orderId}/invoice`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
+      
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -50,80 +44,69 @@ const MyTickets = () => {
         document.body.appendChild(a);
         a.click();
         a.remove();
-        window.URL.revokeObjectURL(url);
       } else {
-        alert("Không thể tải hóa đơn. Vui lòng thử lại sau.");
+        alert('Không thể tải hóa đơn. Vui lòng thử lại sau.');
       }
     } catch (error) {
-      console.error("Download invoice failed:", error);
-      alert("Lỗi kết nối máy chủ.");
+      console.error('Error downloading invoice:', error);
+    } finally {
+      setDownloading(null);
     }
   };
 
-  return (
-    <div className="container py-4">
-      <div className="d-flex justify-content-between align-items-center mb-5 animate-fade-up">
-        <h2 className="fw-bold mb-0">Vé của tôi</h2>
+  if (loading) {
+    return (
+      <div className="container py-5 text-center">
+        <Loader2 className="animate-spin text-primary mx-auto" size={40} />
       </div>
+    );
+  }
 
-      <div className="row g-4">
-        {loading ? (
-          <div className="text-center py-5">
-            <div className="spinner-border text-primary" role="status"></div>
-          </div>
-        ) : !token ? (
-           <div className="text-center py-5 text-muted glass-card mx-auto" style={{ maxWidth: '600px' }}>
-            <Ticket size={48} className="mb-3 opacity-50" />
-            <h4>Vui lòng đăng nhập để xem vé.</h4>
-            <Link to="/login" className="btn btn-gradient px-4 py-2 rounded-pill mt-3">Đăng nhập ngay</Link>
-          </div>
-        ) : orders.length === 0 ? (
-          <div className="text-center py-5 text-muted glass-card mx-auto" style={{ maxWidth: '600px' }}>
-            <Ticket size={48} className="mb-3 opacity-50" />
-            <h4>Bạn chưa mua vé nào.</h4>
-            <p>Hãy khám phá các sự kiện và đặt vé</p>
-            <Link to="/" className="btn btn-gradient px-4 py-2 rounded-pill mt-3">Khám phá sự kiện</Link>
-          </div>
-        ) : (
-          orders.map((order, idx) => (
-            <div key={idx} className="col-12 animate-fade-up" style={{ animationDelay: `${0.1 * idx}s` }}>
-              <div className="glass-card overflow-hidden">
-                <div className="row g-0">
-                  {/* Left: Thông tin Order */}
-                  <div className="col-md-4 bg-dark bg-opacity-50 p-4 border-end border-secondary">
-                    <span className="badge bg-success mb-3">{order.paymentStatus}</span>
-                    <h5 className="fw-bold mb-1">Mã đơn: {order.id}</h5>
-                    <p className="text-muted small mb-4">Ngày đặt: {new Date(order.orderDate).toLocaleString('vi-VN')}</p>
-                    
-                    <div className="d-flex justify-content-between text-muted small mb-4">
-                      <span>Tổng tiền:</span>
-                      <span className="text-gradient fw-bold fs-5">{order.totalAmount?.toLocaleString('vi-VN')}đ</span>
+  return (
+    <div className="container py-5">
+      <h2 className="fw-bold mb-5 d-flex align-items-center gap-3">
+        <Ticket size={32} className="text-primary" /> Vé của tôi
+      </h2>
+
+      {orders.length === 0 ? (
+        <div className="text-center py-5 glass-card">
+          <p className="text-muted">Bạn chưa có đơn hàng nào.</p>
+        </div>
+      ) : (
+        <div className="row g-4">
+          {orders.map((order) => (
+            <div key={order.id} className="col-12 animate-fade-up">
+              <div className="glass-card p-4">
+                <div className="row align-items-center">
+                  <div className="col-md-6">
+                    <div className="d-flex align-items-center gap-2 mb-2">
+                      <span className="badge bg-primary">#{order.id}</span>
+                      <span className={`badge ${
+                        order.status === 'PAID' ? 'bg-success' : 
+                        order.status === 'PENDING' ? 'bg-warning' : 'bg-danger'
+                      }`}>
+                        {order.status}
+                      </span>
                     </div>
-
-                    <button 
-                      className="btn btn-outline-light btn-sm w-100 d-flex align-items-center justify-content-center gap-2"
-                      onClick={() => handleDownloadInvoice(order.id)}
-                    >
-                      <Download size={16} /> Tải lại Hóa đơn PDF
-                    </button>
+                    <h5 className="fw-bold mb-1">Hóa đơn ngày {new Date(order.orderDate).toLocaleDateString('vi-VN')}</h5>
+                    <p className="text-muted small mb-0">Tổng tiền: {order.totalAmount.toLocaleString('vi-VN')}đ</p>
                   </div>
-
-                  {/* Right: Danh sách Ticket */}
-                  <div className="col-md-8 p-4">
-                    <h6 className="fw-bold text-muted mb-4 d-flex align-items-center gap-2">
-                      <QrCode size={18} /> Danh sách vé điện tử
-                    </h6>
-                    <p className="small text-muted mb-3">Hóa đơn và mã vé đã được gửi vào Email của bạn</p>
-                    <div className="alert alert-info bg-dark border-info text-info small">
-                        Hệ thống đã xuất hóa đơn điện tử cho đơn hàng này. Vui lòng kiểm tra Email.
-                    </div>
+                  <div className="col-md-6 text-md-end mt-3 mt-md-0">
+                    <button 
+                      className="btn btn-outline-primary rounded-pill px-4 d-flex align-items-center gap-2 ms-md-auto"
+                      onClick={() => handleDownloadInvoice(order.id)}
+                      disabled={downloading === order.id}
+                    >
+                      {downloading === order.id ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                      Tải hóa đơn PDF
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

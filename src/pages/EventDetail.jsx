@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Calendar, MapPin, Ticket, Info, ShoppingCart, PlusCircle } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { getEventDetail } from '../api/api';
 import { getImageUrl } from '../utils/constants';
 
 const EventDetail = () => {
@@ -15,8 +16,7 @@ const EventDetail = () => {
   useEffect(() => {
     const fetchEvent = async () => {
       try {
-        const response = await fetch(`http://localhost:8080/events/${id}`);
-        const data = await response.json();
+        const data = await getEventDetail(id);
         if (data.code === 1000) {
           setEvent(data.result);
         }

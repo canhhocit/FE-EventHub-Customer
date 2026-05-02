@@ -1,7 +1,6 @@
 import { createContext, useState, useEffect, useContext } from 'react';
-import { API_BASE_URL } from '../utils/constants';
-
 import { useAuth } from './AuthContext';
+import { getCart, addToCartApi, removeFromCartApi, clearCartApi } from '../api/api';
 
 const CartContext = createContext();
 
@@ -17,21 +16,8 @@ export const CartProvider = ({ children }) => {
       return;
     }
     try {
-      const response = await fetch(`${API_BASE_URL}/cart`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      if (!response.ok) {
-        if (response.status === 401) {
-          console.warn("Session expired. Please login again.");
-          // Optional: handle logout here
-        }
-        return;
-      }
-
-      const data = await response.json();
+      const data = await getCart();
       if (data.code === 1000 && data.result) {
-        // Map backend CartItem to frontend cart format
         const items = data.result.items.map(item => ({
           cartItemId: item.id,
           eventId: item.eventId,
@@ -50,7 +36,6 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  // Load giỏ hàng từ backend khi có token
   useEffect(() => {
     fetchBackendCart();
   }, [token]);
@@ -58,29 +43,16 @@ export const CartProvider = ({ children }) => {
   const addToCart = async (event, tickets) => {
     const token = localStorage.getItem('token');
     
-    // If logged in, sync with backend
     if (token) {
       for (const t of tickets) {
         try {
-          await fetch(`${API_BASE_URL}/cart/add`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              ticketTypeId: t.typeId,
-              quantity: t.qty
-            })
-          });
+          await addToCartApi(t.typeId, t.qty);
         } catch (error) {
           console.error("Failed to sync item to backend:", error);
         }
       }
-      // Re-fetch to get consistent state (including item IDs from DB if needed)
       await fetchBackendCart();
     } else {
-      // Offline mode (should be blocked by UI but kept for safety)
       const newItems = tickets.map(t => ({
         eventId: event.id,
         eventName: event.name,
@@ -112,10 +84,7 @@ export const CartProvider = ({ children }) => {
 
     if (token && itemToRemove?.cartItemId) {
       try {
-        await fetch(`${API_BASE_URL}/cart/items/${itemToRemove.cartItemId}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        await removeFromCartApi(itemToRemove.cartItemId);
       } catch (error) {
         console.error("Failed to remove item from backend:", error);
       }
@@ -123,13 +92,14 @@ export const CartProvider = ({ children }) => {
     setCart(prev => prev.filter(item => item.ticketTypeId !== ticketTypeId));
   };
 
-  const clearCart = () => {
+  const clearCart = async () => {
     const token = localStorage.getItem('token');
     if (token) {
-      fetch(`${API_BASE_URL}/cart/clear`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      try {
+        await clearCartApi();
+      } catch (error) {
+        console.error("Failed to clear cart on backend:", error);
+      }
     }
     setCart([]);
   };

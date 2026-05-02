@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, MapPin, Calendar, Filter } from 'lucide-react';
+import { getCategories, getEvents } from '../api/api';
 import { VIETNAM_PROVINCES, getImageUrl } from '../utils/constants';
 
 const Home = () => {
@@ -9,19 +10,16 @@ const Home = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   
-  // States cho bộ lọc
   const [search, setSearch] = useState('');
   const [province, setProvince] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [categories, setCategories] = useState([]);
   const [minPrice, setMinPrice] = useState('');
-  // const [maxPrice, setMaxPrice] = useState('');
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch('http://localhost:8080/categories');
-        const data = await response.json();
+        const data = await getCategories();
         if (data.code === 1000) {
           setCategories(data.result || []);
         }
@@ -35,18 +33,16 @@ const Home = () => {
   const fetchEvents = async () => {
     setLoading(true);
     try {
-      // Build query string
-      const params = new URLSearchParams();
-      params.append('page', page);
-      params.append('size', 10);
-      if (search) params.append('keyword', search);
-      if (province) params.append('province', province);
-      if (categoryId) params.append('categoryId', categoryId);
-      if (minPrice) params.append('minPrice', minPrice);
-      // if (maxPrice) params.append('maxPrice', maxPrice);
+      const params = {
+        page: page,
+        size: 10,
+        keyword: search,
+        province,
+        categoryId,
+        minPrice
+      };
 
-      const response = await fetch(`http://localhost:8080/events/search?${params.toString()}`);
-      const data = await response.json();
+      const data = await getEvents(params);
       if (data.code === 1000) {
         setEvents(data.result.content || []);
         setTotalPages(data.result.totalPages || 1);
