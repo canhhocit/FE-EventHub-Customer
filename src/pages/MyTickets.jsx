@@ -13,7 +13,7 @@ const MyTickets = () => {
       try {
         const data = await getMyBookings();
         if (data.code === 1000) {
-          setOrders(data.result || []);
+          setOrders(data.result?.content || []);
         }
       } catch (error) {
         console.error('Error fetching orders:', error);

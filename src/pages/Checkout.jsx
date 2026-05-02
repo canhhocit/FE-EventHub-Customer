@@ -48,7 +48,8 @@ const Checkout = () => {
     setLoading(true);
     setError('');
     try {
-      const data = await checkoutSelected(paymentMethod, voucherCode);
+      const itemIds = cart.items.map(item => item.cartItemId);
+      const data = await checkoutSelected(itemIds, paymentMethod, voucherCode);
       if (data.code === 1000) {
         if (data.result.paymentUrl) {
           window.location.href = data.result.paymentUrl;

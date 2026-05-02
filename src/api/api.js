@@ -56,10 +56,13 @@ export const clearCartApi = () =>
 
 export const getMyBookings = () => request('/bookings');
 
-export const checkoutSelected = (paymentMethod, voucherCode) => 
-  request(`/bookings/checkout-selected?paymentMethod=${paymentMethod}&voucherCode=${voucherCode}`, {
-    method: 'POST'
+export const checkoutSelected = (itemIds, paymentMethod, voucherCode) => {
+  const url = `/bookings/checkout-selected?paymentMethod=${paymentMethod}${voucherCode ? `&voucherCode=${voucherCode}` : ''}`;
+  return request(url, {
+    method: 'POST',
+    body: JSON.stringify(itemIds)
   });
+};
 
 export const cancelAndRestoreCart = (orderCode) => 
   request(`/bookings/cancel-and-restore-cart?orderCode=${orderCode}`, {

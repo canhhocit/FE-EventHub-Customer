@@ -7,18 +7,18 @@ const CartContext = createContext();
 export const useCart = () => useContext(CartContext);
 
 export const CartProvider = ({ children }) => {
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState({ items: [] }); // Khởi tạo là Object có items
   const { token } = useAuth();
 
   const fetchBackendCart = async () => {
     if (!token) {
-      setCart([]);
+      setCart({ items: [] });
       return;
     }
     try {
       const data = await getCart();
       if (data.code === 1000 && data.result) {
-        const items = data.result.items.map(item => ({
+        const mappedItems = data.result.items.map(item => ({
           cartItemId: item.id,
           eventId: item.eventId,
           eventName: item.eventName,
@@ -29,7 +29,7 @@ export const CartProvider = ({ children }) => {
           quantity: item.quantity,
           saleEndDate: item.saleEndDate
         }));
-        setCart(items);
+        setCart({ items: mappedItems });
       }
     } catch (error) {
       console.error("Failed to fetch backend cart:", error);
@@ -64,23 +64,23 @@ export const CartProvider = ({ children }) => {
       }));
 
       setCart(prev => {
-        let updatedCart = [...prev];
+        let updatedItems = [...prev.items];
         newItems.forEach(newItem => {
-          const existingIdx = updatedCart.findIndex(item => item.ticketTypeId === newItem.ticketTypeId);
+          const existingIdx = updatedItems.findIndex(item => item.ticketTypeId === newItem.ticketTypeId);
           if (existingIdx >= 0) {
-            updatedCart[existingIdx].quantity += newItem.quantity;
+            updatedItems[existingIdx].quantity += newItem.quantity;
           } else {
-            updatedCart.push(newItem);
+            updatedItems.push(newItem);
           }
         });
-        return updatedCart;
+        return { items: updatedItems };
       });
     }
   };
 
   const removeFromCart = async (ticketTypeId) => {
     const token = localStorage.getItem('token');
-    const itemToRemove = cart.find(item => item.ticketTypeId === ticketTypeId);
+    const itemToRemove = cart.items.find(item => item.ticketTypeId === ticketTypeId);
 
     if (token && itemToRemove?.cartItemId) {
       try {
@@ -89,7 +89,9 @@ export const CartProvider = ({ children }) => {
         console.error("Failed to remove item from backend:", error);
       }
     }
-    setCart(prev => prev.filter(item => item.ticketTypeId !== ticketTypeId));
+    setCart(prev => ({
+      items: prev.items.filter(item => item.ticketTypeId !== ticketTypeId)
+    }));
   };
 
   const clearCart = async () => {
@@ -101,15 +103,15 @@ export const CartProvider = ({ children }) => {
         console.error("Failed to clear cart on backend:", error);
       }
     }
-    setCart([]);
+    setCart({ items: [] });
   };
 
   const getCartCount = () => {
-    return cart.reduce((total, item) => total + item.quantity, 0);
+    return cart.items.reduce((total, item) => total + item.quantity, 0);
   };
 
   const getCartTotal = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return cart.items.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
   return (
