@@ -26,6 +26,6 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localho
 
 export const getImageUrl = (imagePath) => {
   if (!imagePath) return 'https://images.unsplash.com/photo-1540553016722-983e48a2cd10?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80';
-  if (imagePath.startsWith('http')) return imagePath;
+  if (imagePath.includes('http://') || imagePath.includes('https://')) return imagePath;
   return `${API_BASE_URL}/images/${imagePath}`;
 };
