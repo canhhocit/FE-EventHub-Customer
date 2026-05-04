@@ -68,15 +68,14 @@ const Checkout = () => {
     setVoucherLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(
-        `http://localhost:8080/vouchers/event/${eventId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
+      const apiBase =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+      const response = await fetch(`${apiBase}/vouchers/event/${eventId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-      );
+      });
       const data = await response.json();
 
       if (data.code === 1000 && Array.isArray(data.result)) {
@@ -162,6 +161,8 @@ const Checkout = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
+      const apiBase =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
       // Build voucher codes map
       const voucherCodes = {};
       Object.entries(selectedVouchers).forEach(([eventId, voucher]) => {
@@ -172,7 +173,7 @@ const Checkout = () => {
       });
 
       const response = await fetch(
-        `http://localhost:8080/bookings/checkout-selected?paymentMethod=${paymentMethod}`,
+        `${apiBase}/bookings/checkout-selected?paymentMethod=${paymentMethod}`,
         {
           method: "POST",
           headers: {
