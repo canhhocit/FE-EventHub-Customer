@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect, useContext } from 'react';
-import { API_BASE_URL } from '../utils/constants';
+import { login as loginApi, register as registerApi, getProfile } from '../utils/api';
 
 const AuthContext = createContext();
 
@@ -13,19 +13,16 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (token) {
       localStorage.setItem('token', token);
-      fetchUserInfo(token);
+      fetchUserInfo();
     } else {
       localStorage.removeItem('token');
       setUser(null);
     }
   }, [token]);
 
-  const fetchUserInfo = async (authToken) => {
+  const fetchUserInfo = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/users/my-info`, {
-        headers: { 'Authorization': `Bearer ${authToken}` }
-      });
-      const data = await response.json();
+      const data = await getProfile();
       if (data.code === 1000) {
         setUser(data.result);
       }
@@ -37,12 +34,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
-      const data = await response.json();
+      const data = await loginApi(username, password);
       if (data.code === 1000) {
         setToken(data.result.token);
         return true;
@@ -56,12 +48,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData)
-      });
-      const data = await response.json();
+      const data = await registerApi(userData);
       if (data.code === 1000) {
         return true;
       } else {

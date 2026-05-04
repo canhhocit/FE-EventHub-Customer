@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { XCircle, ArrowLeft, RefreshCw } from 'lucide-react';
-import { cancelAndRestoreCart } from '../api/api';
+import { cancelAndRestoreCart } from '../utils/api';
 
 const PaymentCancel = () => {
   const navigate = useNavigate();

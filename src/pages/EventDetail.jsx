@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Calendar, MapPin, Ticket, Info, ShoppingCart, PlusCircle } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { getEventDetail } from '../api/api';
+import { getEventDetail } from '../utils/api';
 import { getImageUrl } from '../utils/constants';
 
 const EventDetail = () => {

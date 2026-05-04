@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { User, Mail, Phone, MapPin, Save, ShieldCheck, Loader2 } from 'lucide-react';
-import { getProfile, updateProfile } from '../api/api';
+import { getProfile, updateProfile } from '../utils/api';
 
 const Profile = () => {
   const { user: authUser, token } = useAuth();

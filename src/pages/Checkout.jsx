@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CreditCard, Tag, CheckCircle } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { validateVoucher, checkoutSelected } from '../api/api';
+import { validateVoucher, checkoutSelected } from '../utils/api';
 
 const Checkout = () => {
   const navigate = useNavigate();

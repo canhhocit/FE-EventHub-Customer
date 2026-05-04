@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Mail, Lock, CheckCircle, ArrowLeft, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { forgotPassword, resetPassword } from '../api/api';
+import { forgotPassword, resetPassword } from '../utils/api';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');

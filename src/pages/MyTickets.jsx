@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Ticket, QrCode, Download, Loader2 } from 'lucide-react';
+import { Ticket, QrCode, Download, Loader2, CreditCard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { getMyBookings } from '../api/api';
+import { getMyBookings } from '../utils/api';
 import { API_BASE_URL } from '../utils/constants';
 
 const MyTickets = () => {
@@ -15,7 +15,6 @@ const MyTickets = () => {
       try {
         const data = await getMyBookings();
         if (data.code === 1000) {
-          // Lấy .content từ Page response của Backend
           setOrders(data.result.content || []);
         }
       } catch (error) {
@@ -58,6 +57,30 @@ const MyTickets = () => {
     }
   };
 
+  const handleResumePayment = async (paymentUrl) => {
+    if (!window.confirm("Bạn muốn tiếp tục thanh toán cho đơn hàng này?")) return;
+    
+    if (paymentUrl) {
+      window.location.href = paymentUrl;
+    } else {
+      alert("Link thanh toán không khả dụng hoặc đã hết hạn. Vui lòng thử lại sau.");
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'PAID':
+        return <span className="badge bg-success mb-3">Đã thanh toán</span>;
+      case 'PENDING':
+        return <span className="badge bg-warning text-dark mb-3">Chờ thanh toán</span>;
+      case 'FAILED':
+      case 'CANCELLED':
+        return <span className="badge bg-danger mb-3">Đã hủy / Thất bại</span>;
+      default:
+        return <span className="badge bg-secondary mb-3">{status}</span>;
+    }
+  };
+
   return (
     <div className="container py-4">
       <div className="d-flex justify-content-between align-items-center mb-5 animate-fade-up">
@@ -89,7 +112,7 @@ const MyTickets = () => {
                 <div className="row g-0">
                   {/* Left: Thông tin Order */}
                   <div className="col-md-4 bg-dark bg-opacity-50 p-4 border-end border-secondary">
-                    <span className="badge bg-success mb-3">{order.paymentStatus || order.status}</span>
+                    {getStatusBadge(order.paymentStatus)}
                     <h5 className="fw-bold mb-1">Mã đơn: {order.id}</h5>
                     <p className="text-muted small mb-4">Ngày đặt: {new Date(order.orderDate).toLocaleString('vi-VN')}</p>
                     
@@ -98,23 +121,48 @@ const MyTickets = () => {
                       <span className="text-gradient fw-bold fs-5">{order.totalAmount?.toLocaleString('vi-VN')}đ</span>
                     </div>
 
-                    <button 
-                      className="btn btn-outline-light btn-sm w-100 d-flex align-items-center justify-content-center gap-2"
-                      onClick={() => handleDownloadInvoice(order.id)}
-                    >
-                      <Download size={16} /> Tải lại Hóa đơn PDF
-                    </button>
+                    <div className="d-flex flex-column gap-2">
+                      {order.paymentStatus === 'PAID' ? (
+                        <button 
+                          className="btn btn-outline-light btn-sm w-100 d-flex align-items-center justify-content-center gap-2"
+                          onClick={() => handleDownloadInvoice(order.id)}
+                        >
+                          <Download size={16} /> Tải Hóa đơn PDF
+                        </button>
+                      ) : order.paymentStatus === 'PENDING' ? (
+                        <button 
+                          className="btn btn-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-2"
+                          onClick={() => handleResumePayment(order.paymentUrl)}
+                        >
+                          <CreditCard size={16} />
+                          Tiếp tục thanh toán
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
 
                   {/* Right: Danh sách Ticket */}
                   <div className="col-md-8 p-4">
                     <h6 className="fw-bold text-muted mb-4 d-flex align-items-center gap-2">
-                      <QrCode size={18} /> Danh sách vé điện tử
+                      <QrCode size={18} /> {order.paymentStatus === 'PAID' ? 'Danh sách vé điện tử' : 'Thông tin đặt chỗ'}
                     </h6>
-                    <p className="small text-muted mb-3">Hóa đơn và mã vé đã được gửi vào Email của bạn</p>
-                    <div className="alert alert-info bg-dark border-info text-info small">
-                        Hệ thống đã xuất hóa đơn điện tử cho đơn hàng này. Vui lòng kiểm tra Email.
-                    </div>
+                    
+                    {order.paymentStatus === 'PAID' ? (
+                      <>
+                        <p className="small text-muted mb-3">Hóa đơn và mã vé đã được gửi vào Email của bạn</p>
+                        <div className="alert alert-info bg-dark border-info text-info small">
+                          Hệ thống đã xuất hóa đơn điện tử cho đơn hàng này. Vui lòng kiểm tra Email.
+                        </div>
+                      </>
+                    ) : order.paymentStatus === 'PENDING' ? (
+                      <div className="alert alert-warning bg-dark border-warning text-warning small">
+                        Đơn hàng của bạn đang chờ thanh toán. Vui lòng hoàn tất giao dịch để nhận vé điện tử.
+                      </div>
+                    ) : (
+                      <div className="alert alert-secondary bg-dark border-secondary text-muted small">
+                        Đơn hàng này đã bị hủy hoặc giao dịch thất bại.
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
