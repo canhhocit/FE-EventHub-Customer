@@ -69,7 +69,7 @@ const Checkout = () => {
     try {
       const token = localStorage.getItem("token");
       const apiBase =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+        import.meta.env.VITE_API_BASE_URL;
       const response = await fetch(`${apiBase}/vouchers/event/${eventId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -162,7 +162,7 @@ const Checkout = () => {
     try {
       const token = localStorage.getItem("token");
       const apiBase =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+        import.meta.env.VITE_API_BASE_URL;
 
       // Build query params with voucher codes
       const voucherParams = [];
