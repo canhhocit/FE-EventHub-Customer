@@ -163,27 +163,27 @@ const Checkout = () => {
       const token = localStorage.getItem("token");
       const apiBase =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-      // Build voucher codes map
-      const voucherCodes = {};
+
+      // Build query params with voucher codes
+      const voucherParams = [];
       Object.entries(selectedVouchers).forEach(([eventId, voucher]) => {
-        const eventIdKey = String(eventId);
-        if (voucher) {
-          voucherCodes[eventIdKey] = voucher.code;
+        if (voucher && voucher.code) {
+          voucherParams.push(`voucherCode=${encodeURIComponent(voucher.code)}`);
         }
       });
 
+      const queryString =
+        voucherParams.length > 0 ? `&${voucherParams.join("&")}` : "";
+
       const response = await fetch(
-        `${apiBase}/bookings/checkout-selected?paymentMethod=${paymentMethod}`,
+        `${apiBase}/bookings/checkout-selected?paymentMethod=${paymentMethod}${queryString}&platform=web`,
         {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            cartItemIds: selectedCartItemIds,
-            voucherCodes: voucherCodes,
-          }),
+          body: JSON.stringify(selectedCartItemIds),
         },
       );
 
