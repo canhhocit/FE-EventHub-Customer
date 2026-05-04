@@ -52,7 +52,7 @@ export const getMyBookings = () =>
     api.get("/bookings").then(res => res.data);
 
 export const checkoutSelected = (itemIds, paymentMethod, voucherCode) => {
-    const url = `/bookings/checkout-selected?paymentMethod=${paymentMethod}${voucherCode ? `&voucherCode=${voucherCode}` : ''}`;
+    const url = `/bookings/checkout-selected?paymentMethod=${paymentMethod}${voucherCode ? `&voucherCode=${voucherCode}` : ''}&platform=web`;
     return api.post(url, itemIds).then(res => res.data);
 };
 
