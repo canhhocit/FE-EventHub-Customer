@@ -13,7 +13,9 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (token) {
       localStorage.setItem('token', token);
-      fetchUserInfo();
+      if (!user) {
+        fetchUserInfo();
+      }
     } else {
       localStorage.removeItem('token');
       setUser(null);
@@ -36,8 +38,31 @@ export const AuthProvider = ({ children }) => {
     try {
       const data = await loginApi(username, password);
       if (data.code === 1000) {
-        setToken(data.result.token);
-        return true;
+        const newToken = data.result.token;
+        // Tạm thời lưu vào localStorage để getProfile có thể dùng token này trong header
+        localStorage.setItem('token', newToken);
+        
+        try {
+          const profileData = await getProfile();
+          if (profileData.code === 1000) {
+            const userProfile = profileData.result;
+            
+            // CHẶN QUYỀN TUYỆT ĐỐI: Chỉ cho phép role CUSTOMER truy cập
+            const isCustomer = userProfile.roles.some(role => role.name === 'CUSTOMER');
+            
+            if (!isCustomer) {
+              localStorage.removeItem('token');
+              throw new Error('Tài khoản này không phải tài khoản khách hàng.');
+            }
+
+            setToken(newToken);
+            setUser(userProfile);
+            return true;
+          }
+        } catch (profileError) {
+          localStorage.removeItem('token');
+          throw new Error(profileError.message || 'Không thể lấy thông tin người dùng');
+        }
       } else {
         throw new Error(data.message || 'Đăng nhập thất bại');
       }
