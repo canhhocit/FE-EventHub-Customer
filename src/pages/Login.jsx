@@ -55,9 +55,29 @@ const Login = () => {
               required
             />
           </div>
-          <button type="submit" className="btn btn-gradient w-100 py-2 rounded-pill fs-5 shadow-lg" disabled={loading}>
+          <button type="submit" className="btn btn-gradient w-100 py-2 rounded-pill fs-5 shadow-lg mb-3" disabled={loading}>
             {loading ? <span className="spinner-border spinner-border-sm"></span> : 'Đăng nhập'}
           </button>
+
+          <button
+            type="button"
+            className="btn btn-outline-info w-100 py-2 rounded-pill fw-semibold shadow-sm d-flex align-items-center justify-content-center gap-2"
+            onClick={async () => {
+              setLoading(true);
+              try {
+                await login("khachhang_demo", "123456");
+                navigate('/');
+              } catch (e) {
+                setError(e.message);
+              } finally {
+                setLoading(false);
+              }
+            }}
+            disabled={loading}
+          >
+            ⚡ Đăng nhập nhanh tài khoản Test (Chế độ Demo)
+          </button>
+
           <div className="text-center mt-3">
             <Link to="/forgot-password" size={14} className="text-muted text-decoration-none small hover-primary">
               Quên mật khẩu?

@@ -1,22 +1,38 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, MapPin, Calendar, Filter } from 'lucide-react';
-import { getCategories, getEvents } from '../utils/api';
+import { Search, MapPin, Calendar, Filter, Newspaper, ArrowRight, Sparkles } from 'lucide-react';
+import { getCategories, getEvents, getBlogPosts } from '../utils/api';
 import { VIETNAM_PROVINCES, getImageUrl } from '../utils/constants';
 
 import EventCard from '../components/EventCard';
+import BlogCard from '../components/BlogCard';
 
 const Home = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [featuredBlogs, setFeaturedBlogs] = useState([]);
   
   const [search, setSearch] = useState('');
   const [province, setProvince] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [categories, setCategories] = useState([]);
   const [minPrice, setMinPrice] = useState('');
+
+  useEffect(() => {
+    const fetchFeaturedBlogs = async () => {
+      try {
+        const res = await getBlogPosts({ page: 0, size: 3 });
+        if (res && res.result && res.result.content) {
+          setFeaturedBlogs(res.result.content);
+        }
+      } catch (err) {
+        console.error("Lỗi lấy bài viết nổi bật:", err);
+      }
+    };
+    fetchFeaturedBlogs();
+  }, []);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -167,6 +183,35 @@ const Home = () => {
           >
             Sau
           </button>
+        </div>
+      )}
+
+      {/* Featured Blogs Section */}
+      {featuredBlogs.length > 0 && (
+        <div className="mt-5 pt-5 border-top border-secondary border-opacity-25 animate-fade-up">
+          <div className="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
+            <div>
+              <div className="d-inline-flex align-items-center gap-1 text-primary small fw-semibold mb-1">
+                <Sparkles size={14} /> Góc tin tức & cẩm nang
+              </div>
+              <h2 className="fw-bold text-white mb-0">
+                Tin Tức & <span className="text-gradient">Sự Kiện Nổi Bật</span>
+              </h2>
+            </div>
+            <Link
+              to="/blog"
+              className="btn btn-outline-primary rounded-pill px-4 py-2 d-inline-flex align-items-center gap-2 text-decoration-none fw-semibold small"
+            >
+              <span>Xem tất cả bài viết</span>
+              <ArrowRight size={16} />
+            </Link>
+          </div>
+
+          <div className="row g-4">
+            {featuredBlogs.map((blog) => (
+              <BlogCard key={blog.id} blog={blog} />
+            ))}
+          </div>
         </div>
       )}
     </div>

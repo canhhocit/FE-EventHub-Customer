@@ -19,13 +19,13 @@ export const CartProvider = ({ children }) => {
       const data = await getCart();
       if (data.code === 1000 && data.result) {
         const mappedItems = data.result.items.map(item => ({
-          cartItemId: item.id,
+          cartItemId: item.cartItemId || item.id || Date.now() + Math.random(),
           eventId: item.eventId,
           eventName: item.eventName,
           eventImage: item.eventImage,
           ticketTypeId: item.ticketTypeId,
           ticketTypeName: item.ticketTypeName,
-          price: item.unitPrice,
+          price: item.unitPrice || item.price || 0,
           quantity: item.quantity,
           saleEndDate: item.saleEndDate
         }));
@@ -54,6 +54,7 @@ export const CartProvider = ({ children }) => {
       await fetchBackendCart();
     } else {
       const newItems = tickets.map(t => ({
+        cartItemId: Date.now() + Math.random(),
         eventId: event.id,
         eventName: event.name,
         eventImage: event.imageUrls?.[0],

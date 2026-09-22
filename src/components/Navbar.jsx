@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Ticket, LogOut, ShoppingCart, User } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Ticket, LogOut, ShoppingCart, User, Newspaper, HelpCircle } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -10,6 +10,7 @@ const Navbar = () => {
 
   const { token, user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -47,8 +48,33 @@ const Navbar = () => {
           <ul className="navbar-nav ms-auto align-items-center gap-3">
             {/* home */}
             <li className="nav-item">
-              <Link className="nav-link" to="/">
+              <Link
+                className={`nav-link ${location.pathname === '/' ? 'active text-primary fw-bold' : ''}`}
+                to="/"
+              >
                 Trang chủ
+              </Link>
+            </li>
+
+            {/* blog */}
+            <li className="nav-item">
+              <Link
+                className={`nav-link d-flex align-items-center gap-1 ${location.pathname.startsWith('/blog') ? 'active text-primary fw-bold' : ''}`}
+                to="/blog"
+              >
+                <Newspaper size={16} />
+                Tin tức & Blog
+              </Link>
+            </li>
+
+            {/* help */}
+            <li className="nav-item">
+              <Link
+                className={`nav-link d-flex align-items-center gap-1 ${['/help', '/guide', '/security', '/organizer-handbook'].includes(location.pathname) ? 'active text-primary fw-bold' : ''}`}
+                to="/help"
+              >
+                <HelpCircle size={16} />
+                Trợ giúp
               </Link>
             </li>
             {/* show khi đã login */}
