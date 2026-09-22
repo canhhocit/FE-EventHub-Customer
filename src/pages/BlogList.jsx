@@ -1,158 +1,165 @@
-import { useState, useEffect } from 'react';
-import { Loader2, Newspaper, Tag, Sparkles } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import {
+  Loader2,
+  Newspaper,
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { getBlogPosts, getBlogTags } from '../utils/api';
 import BlogCard from '../components/BlogCard';
+
+const PAGE_SIZE = 9;
+/** The tag filter is applied client-side, so pull a wider slice when one is on. */
+const TAG_FETCH_SIZE = 60;
 
 const BlogList = () => {
   const [blogs, setBlogs] = useState([]);
   const [tags, setTags] = useState([]);
   const [selectedTag, setSelectedTag] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Lấy danh sách tags
   useEffect(() => {
-    const fetchTags = async () => {
-      try {
-        const res = await getBlogTags();
-        if (res && res.result) {
-          setTags(res.result);
-        }
-      } catch (err) {
-        console.error("Lỗi lấy danh sách tag:", err);
-      }
-    };
-    fetchTags();
+    getBlogTags()
+      .then((res) => setTags(res?.result || []))
+      .catch(() => setTags([]));
   }, []);
 
-  // Lấy danh sách bài viết
   useEffect(() => {
-    const fetchPosts = async () => {
-      setLoading(true);
-      try {
-        const res = await getBlogPosts({ page, size: 6, tagId: selectedTag });
-        if (res && res.result) {
-          setBlogs(res.result.content || []);
-          setTotalPages(res.result.totalPages || 1);
-        }
-      } catch (err) {
-        console.error("Lỗi lấy danh sách bài viết:", err);
-      } finally {
-        setLoading(false);
-      }
+    let cancelled = false;
+    setLoading(true);
+    setError('');
+
+    const params = selectedTag
+      ? { page: 0, size: TAG_FETCH_SIZE }
+      : { page, size: PAGE_SIZE };
+
+    getBlogPosts(params)
+      .then((res) => {
+        if (cancelled) return;
+        setBlogs(res?.result?.content || []);
+        setTotalPages(Math.max(res?.result?.totalPages || 1, 1));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setBlogs([]);
+        setError(err.message);
+      })
+      .finally(() => !cancelled && setLoading(false));
+
+    return () => {
+      cancelled = true;
     };
-    fetchPosts();
   }, [page, selectedTag]);
 
+  const visibleBlogs = useMemo(() => {
+    if (!selectedTag) return blogs;
+    return blogs.filter((blog) =>
+      [...(blog.tags || [])].some((tag) => tag.id === selectedTag),
+    );
+  }, [blogs, selectedTag]);
+
+  const selectTag = (tagId) => {
+    setSelectedTag(tagId);
+    setPage(0);
+  };
+
+  const goToPage = (next) => {
+    setPage(next);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
-    <div className="container py-4 animate-fade-up">
-      {/* Hero Section */}
-      <div className="text-center mb-5">
-        <div className="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-primary bg-opacity-10 border border-primary border-opacity-25 text-primary mb-3 small fw-semibold">
-          <Sparkles size={16} /> Tin tức & Hoạt động
-        </div>
-        <h1 className="display-4 fw-bold mb-3">
-          Tin tức <span className="text-gradient">& Bài viết Sự kiện</span>
+    <div className="container py-4">
+      <div className="text-center mb-4">
+        <h1 className="fw-bold mb-2" style={{ fontSize: 'clamp(1.6rem, 3.6vw, 2.25rem)' }}>
+          Tin tức &amp; bài viết
         </h1>
-        <p className="text-muted mx-auto" style={{ maxWidth: '600px' }}>
-          Cập nhật những thông tin mới nhất, câu chuyện hậu trường và cẩm nang tham gia sự kiện độc quyền từ ban tổ chức.
+        <p className="text-muted mb-0 mx-auto" style={{ maxWidth: 560 }}>
+          Thông tin mới nhất về sự kiện, hậu trường và cẩm nang tham gia từ ban tổ chức.
         </p>
       </div>
 
-      {/* Tag Filters */}
-      <div className="d-flex flex-wrap justify-content-center gap-2 mb-5">
-        <button
-          className={`btn btn-sm rounded-pill px-4 py-2 fw-semibold transition-all ${
-            selectedTag === null
-              ? 'btn-gradient text-white shadow-sm'
-              : 'btn-outline-secondary text-white'
-          }`}
-          onClick={() => {
-            setSelectedTag(null);
-            setPage(0);
-          }}
-        >
-          Tất cả bài viết
-        </button>
-        {tags.map((tag) => (
+      {tags.length > 0 && (
+        <div className="d-flex flex-wrap justify-content-center gap-2 mb-4">
           <button
-            key={tag.id}
-            className={`btn btn-sm rounded-pill px-4 py-2 fw-semibold transition-all ${
-              selectedTag === tag.id
-                ? 'btn-gradient text-white shadow-sm'
-                : 'btn-outline-secondary text-white'
-            }`}
-            onClick={() => {
-              setSelectedTag(tag.id);
-              setPage(0);
-            }}
+            type="button"
+            className={`btn btn-sm px-3 py-2 ${selectedTag === null ? 'btn-accent' : 'btn-ghost'}`}
+            onClick={() => selectTag(null)}
           >
-            #{tag.name}
+            Tất cả
           </button>
-        ))}
-      </div>
-
-      {/* Content Section */}
-      {loading ? (
-        <div className="text-center py-5">
-          <Loader2 className="animate-spin text-primary mx-auto mb-3" size={48} />
-          <p className="text-muted">Đang tải bài viết...</p>
+          {tags.map((tag) => (
+            <button
+              key={tag.id}
+              type="button"
+              className={`btn btn-sm px-3 py-2 ${
+                selectedTag === tag.id ? 'btn-accent' : 'btn-ghost'
+              }`}
+              onClick={() => selectTag(tag.id)}
+            >
+              {tag.name}
+            </button>
+          ))}
         </div>
-      ) : blogs.length === 0 ? (
-        <div className="glass-card text-center py-5 my-4">
-          <Newspaper size={48} className="text-muted mb-3 mx-auto" />
-          <h4 className="text-white mb-2">Chưa có bài viết nào</h4>
-          <p className="text-muted">Vui lòng chọn danh mục khác hoặc quay lại sau.</p>
+      )}
+
+      {loading ? (
+        <div className="text-center py-5 text-muted">
+          <Loader2 size={28} className="spin mb-3" />
+          <p className="small mb-0">Đang tải bài viết…</p>
+        </div>
+      ) : error ? (
+        <div className="panel p-5 text-center mx-auto" style={{ maxWidth: 480 }}>
+          <AlertCircle size={32} className="mb-3" style={{ color: 'var(--danger)' }} />
+          <h2 className="h6 fw-bold mb-2">Không tải được bài viết</h2>
+          <p className="text-muted small mb-0">{error}</p>
+        </div>
+      ) : visibleBlogs.length === 0 ? (
+        <div className="panel p-5 text-center mx-auto" style={{ maxWidth: 480 }}>
+          <Newspaper size={32} className="text-muted mb-3" />
+          <h2 className="h6 fw-bold mb-2">Chưa có bài viết nào</h2>
+          <p className="text-muted small mb-0">
+            {selectedTag ? 'Không có bài viết trong chủ đề này.' : 'Hãy quay lại sau.'}
+          </p>
         </div>
       ) : (
         <>
-          <div className="row g-4">
-            {blogs.map((blog) => (
-              <BlogCard key={blog.id} blog={blog} />
+          <div className="row g-3 row-cols-1 row-cols-sm-2 row-cols-lg-3">
+            {visibleBlogs.map((blog) => (
+              <div className="col" key={blog.id}>
+                <BlogCard blog={blog} />
+              </div>
             ))}
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="d-flex justify-content-center align-items-center gap-3 mt-5 pt-4">
+          {!selectedTag && totalPages > 1 && (
+            <nav className="d-flex justify-content-center align-items-center gap-2 mt-4">
               <button
-                className="btn btn-outline-primary rounded-pill px-4 fw-semibold"
+                className="btn btn-ghost btn-sm px-3 py-2 d-inline-flex align-items-center gap-1"
                 disabled={page === 0}
-                onClick={() => {
-                  setPage((p) => p - 1);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
+                onClick={() => goToPage(page - 1)}
               >
-                Trang trước
+                <ChevronLeft size={15} /> Trước
               </button>
-              <span className="text-muted small">
-                Trang <span className="text-white fw-bold">{page + 1}</span> / {totalPages}
+              <span className="small text-muted px-2">
+                Trang <strong style={{ color: 'var(--text)' }}>{page + 1}</strong> /{' '}
+                {totalPages}
               </span>
               <button
-                className="btn btn-outline-primary rounded-pill px-4 fw-semibold"
+                className="btn btn-ghost btn-sm px-3 py-2 d-inline-flex align-items-center gap-1"
                 disabled={page >= totalPages - 1}
-                onClick={() => {
-                  setPage((p) => p + 1);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
+                onClick={() => goToPage(page + 1)}
               >
-                Trang sau
+                Sau <ChevronRight size={15} />
               </button>
-            </div>
+            </nav>
           )}
         </>
       )}
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        .animate-spin {
-          animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}} />
     </div>
   );
 };

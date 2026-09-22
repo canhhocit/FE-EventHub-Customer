@@ -1,91 +1,57 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, User, ChevronRight } from 'lucide-react';
-import { getImageUrl } from '../utils/constants';
+import { Calendar, User } from 'lucide-react';
+import { getImageUrl, handleImageError, formatDate } from '../utils/constants';
 
+/**
+ * Renders the card only. The parent decides the grid column, so the same card
+ * works in any layout.
+ */
 const BlogCard = ({ blog }) => {
   if (!blog) return null;
 
-  const defaultThumbnail = "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=800&auto=format&fit=crop";
-  const thumbnailSrc = blog.thumbnail ? getImageUrl(blog.thumbnail) : defaultThumbnail;
-  const targetLink = `/blog/${blog.slug || blog.id}`;
+  const firstTag = [...(blog.tags || [])][0];
 
   return (
-    <div className="col-md-6 col-lg-4 d-flex">
-      <Link to={targetLink} className="text-decoration-none w-100 d-flex flex-column">
-        <div className="glass-card flex-grow-1 overflow-hidden d-flex flex-column border border-secondary border-opacity-25 transition-all">
-          {/* Thumbnail Container */}
-          <div className="position-relative overflow-hidden" style={{ height: '220px' }}>
-            <img
-              src={thumbnailSrc}
-              className="w-100 h-100 object-fit-cover blog-card-img"
-              alt={blog.title}
-            />
-            {blog.tags && blog.tags.length > 0 && (
-              <div className="position-absolute top-0 start-0 m-3">
-                <span className="badge btn-gradient rounded-pill px-3 py-2 shadow-sm small">
-                  {blog.tags[0].name}
-                </span>
-              </div>
-            )}
-          </div>
+    <article className="tile">
+      <div className="tile-media">
+        <img
+          src={getImageUrl(blog.thumbnail)}
+          onError={handleImageError}
+          alt=""
+          loading="lazy"
+        />
+        {firstTag?.name && (
+          <span className="pill pill-on-media pill-soon">{firstTag.name}</span>
+        )}
+      </div>
 
-          {/* Body Content */}
-          <div className="p-4 d-flex flex-column flex-grow-1">
-            <div className="d-flex align-items-center gap-3 text-muted small mb-2">
-              <span className="d-flex align-items-center gap-1">
-                <Calendar size={14} className="text-primary" />
-                {blog.publishedAt
-                  ? new Date(blog.publishedAt).toLocaleDateString('vi-VN')
-                  : "Mới đăng"}
-              </span>
-              <span className="d-flex align-items-center gap-1">
-                <User size={14} className="text-primary" />
-                {blog.authorName || "Ban tổ chức"}
-              </span>
-            </div>
-
-            <h5 className="fw-bold text-white mb-2 lh-base text-truncate-2">
-              {blog.title}
-            </h5>
-
-            <p className="text-muted small text-truncate-3 mb-4 flex-grow-1">
-              {blog.summary || "Đọc bài viết chi tiết để cập nhật thông tin sự kiện mới nhất..."}
-            </p>
-
-            <div className="mt-auto pt-2 border-top border-secondary border-opacity-25 d-flex align-items-center justify-content-between text-primary fw-semibold small">
-              <span>Đọc tiếp</span>
-              <ChevronRight size={16} className="arrow-icon" />
-            </div>
-          </div>
+      <div className="tile-body">
+        <div className="tile-meta" style={{ gap: 14 }}>
+          <span className="d-inline-flex align-items-center gap-1">
+            <Calendar size={13} />
+            {formatDate(blog.publishedAt || blog.createdAt)}
+          </span>
+          <span className="d-inline-flex align-items-center gap-1 text-truncate">
+            <User size={13} />
+            {blog.authorName || 'Ban tổ chức'}
+          </span>
         </div>
-      </Link>
 
-      <style dangerouslySetInnerHTML={{ __html: `
-        .text-truncate-2 {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-        .text-truncate-3 {
-          display: -webkit-box;
-          -webkit-line-clamp: 3;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-        .blog-card-img {
-          transition: transform 0.5s ease;
-        }
-        .glass-card:hover .blog-card-img {
-          transform: scale(1.06);
-        }
-        .glass-card:hover .arrow-icon {
-          transform: translateX(4px);
-          transition: transform 0.2s ease;
-        }
-      `}} />
-    </div>
+        <h3 className="tile-title clamp-2">
+          <Link
+            to={`/blog/${blog.slug || blog.id}`}
+            className="stretched-link text-decoration-none"
+            style={{ color: 'inherit' }}
+          >
+            {blog.title}
+          </Link>
+        </h3>
+
+        {blog.summary && (
+          <p className="text-muted small clamp-2 mb-0">{blog.summary}</p>
+        )}
+      </div>
+    </article>
   );
 };
 

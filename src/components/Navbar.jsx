@@ -1,175 +1,288 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Ticket, LogOut, ShoppingCart, User, Newspaper, HelpCircle } from 'lucide-react';
+import {
+  Ticket,
+  LogOut,
+  ShoppingCart,
+  User,
+  Newspaper,
+  HelpCircle,
+  Menu,
+  X,
+  Megaphone,
+  ChevronDown,
+} from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
+const NAV_LINKS = [
+  { to: '/', label: 'Trang chủ', match: (p) => p === '/' },
+  {
+    to: '/blog',
+    label: 'Tin tức',
+    icon: Newspaper,
+    match: (p) => p.startsWith('/blog'),
+  },
+  {
+    to: '/help',
+    label: 'Trợ giúp',
+    icon: HelpCircle,
+    match: (p) => ['/help', '/guide', '/security', '/organizer-handbook'].includes(p),
+  },
+];
+
 const Navbar = () => {
   const { getCartCount } = useCart();
-  const cartCount = getCartCount();
-
-  const { token, user, logout } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const menuRef = useRef(null);
 
-  const isLoggedIn = !!token; // kiểm tra đăng nhập
+  const cartCount = getCartCount();
+
+  // Any navigation closes both menus — they used to stay stuck open.
+  useEffect(() => {
+    setMenuOpen(false);
+    setMobileOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onDocClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    };
+    const onEsc = (e) => e.key === 'Escape' && setMenuOpen(false);
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [menuOpen]);
 
   const handleLogout = () => {
     logout();
-    setDropdownOpen(false);
-    navigate('/login');
+    setMenuOpen(false);
+    navigate('/');
   };
 
+  const displayName = user?.fullName || user?.username || 'Tài khoản';
+
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark navbar-glass fixed-top">
-      <div className="container">
-        {/* Logo */}
+    <header className="app-nav fixed-top">
+      <div className="container h-100 d-flex align-items-center gap-3">
         <Link
-          className="navbar-brand fw-bold d-flex align-items-center gap-2"
           to="/"
+          className="d-flex align-items-center gap-2 fw-bold text-decoration-none flex-shrink-0"
+          style={{ color: 'var(--text)' }}
         >
-          <span className="text-gradient fs-4">Event</span> Ticket
+          <span
+            className="d-grid place-items-center rounded"
+            style={{
+              width: 30,
+              height: 30,
+              background: 'var(--accent)',
+              display: 'grid',
+              placeItems: 'center',
+            }}
+          >
+            <Ticket size={17} color="#fff" />
+          </span>
+          <span style={{ fontSize: '1.05rem', letterSpacing: '-0.02em' }}>
+            EventTicket
+          </span>
         </Link>
 
-        {/* Mobile button */}
-        <button
-          className="navbar-toggler border-0 shadow-none"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#navbarNav"
-        >
-          <span className="navbar-toggler-icon"></span>
-        </button>
+        {/* Primary links — desktop */}
+        <nav className="d-none d-lg-flex align-items-center gap-1 ms-2">
+          {NAV_LINKS.map(({ to, label, icon: Icon, match }) => (
+            <Link
+              key={to}
+              to={to}
+              className={`nav-item-link d-inline-flex align-items-center gap-2${
+                match(location.pathname) ? ' is-active' : ''
+              }`}
+            >
+              {Icon && <Icon size={15} />}
+              {label}
+            </Link>
+          ))}
+        </nav>
 
-        {/* Menu */}
-        <div className="collapse navbar-collapse" id="navbarNav">
-          <ul className="navbar-nav ms-auto align-items-center gap-3">
-            {/* home */}
-            <li className="nav-item">
+        <div className="ms-auto d-flex align-items-center gap-2">
+          {/* Organizer entry point */}
+          <Link
+            to="/for-organizers"
+            className="d-none d-md-inline-flex align-items-center gap-2 nav-item-link"
+            style={{
+              border: '1px solid var(--accent-line)',
+              color: 'var(--accent)',
+            }}
+          >
+            <Megaphone size={15} />
+            Bạn là ban tổ chức?
+          </Link>
+
+          {isAuthenticated && (
+            <>
               <Link
-                className={`nav-link ${location.pathname === '/' ? 'active text-primary fw-bold' : ''}`}
-                to="/"
+                to="/my-tickets"
+                className="nav-item-link d-none d-sm-inline-flex align-items-center gap-2"
+                title="Vé của tôi"
               >
-                Trang chủ
+                <Ticket size={16} />
+                <span className="d-none d-xl-inline">Vé của tôi</span>
               </Link>
-            </li>
 
-            {/* blog */}
-            <li className="nav-item">
               <Link
-                className={`nav-link d-flex align-items-center gap-1 ${location.pathname.startsWith('/blog') ? 'active text-primary fw-bold' : ''}`}
-                to="/blog"
+                to="/cart"
+                className="nav-item-link position-relative d-inline-flex"
+                aria-label={`Giỏ hàng, ${cartCount} vé`}
               >
-                <Newspaper size={16} />
-                Tin tức & Blog
-              </Link>
-            </li>
-
-            {/* help */}
-            <li className="nav-item">
-              <Link
-                className={`nav-link d-flex align-items-center gap-1 ${['/help', '/guide', '/security', '/organizer-handbook'].includes(location.pathname) ? 'active text-primary fw-bold' : ''}`}
-                to="/help"
-              >
-                <HelpCircle size={16} />
-                Trợ giúp
-              </Link>
-            </li>
-            {/* show khi đã login */}
-            {isLoggedIn && (
-              <>
-                {/* my tickets */}
-                <li className="nav-item">
-                  <Link
-                    className="nav-link d-flex align-items-center gap-2"
-                    to="/my-tickets"
+                <ShoppingCart size={18} />
+                {cartCount > 0 && (
+                  <span
+                    className="position-absolute badge rounded-pill"
+                    style={{
+                      top: 1,
+                      right: 1,
+                      background: 'var(--accent)',
+                      fontSize: '0.625rem',
+                      padding: '2px 5px',
+                    }}
                   >
-                    <Ticket size={18} />
-                    Vé của tôi
-                  </Link>
-                </li>
-
-                {/* cart */}
-                <li className="nav-item me-2">
-                  <Link
-                    className="nav-link position-relative d-flex align-items-center"
-                    to="/cart"
-                  >
-                    <ShoppingCart size={22} />
-
-                    {cartCount > 0 && (
-                      <span
-                        className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                        style={{ fontSize: '0.65rem' }}
-                      >
-                        {cartCount}
-                      </span>
-                    )}
-                  </Link>
-                </li>
-              </>
-            )}
-            {/* chưa login */}
-            {!isLoggedIn ? (
-              <li className="nav-item">
-                <Link
-                  className="btn btn-gradient rounded-pill px-4"
-                  to="/login"
-                >
-                  Đăng nhập
-                </Link>
-              </li>
-            ) : (
-              /* đã login */
-              <li className="nav-item position-relative">
-                <button
-                  type="button"
-                  className="nav-link border-0 bg-transparent d-flex align-items-center gap-2"
-                  onClick={() => setDropdownOpen(!dropdownOpen)}
-                >
-                  <User size={18} />
-                  {user?.fullName || 'Khách hàng'}
-                </button>
-
-                {dropdownOpen && (
-                  <ul
-                    className="dropdown-menu dropdown-menu-end dropdown-menu-dark glass-card border-secondary show position-absolute"
-                    style={{ right: 0, top: '100%' }}
-                  >
-                    <li>
-                      <Link
-                        className="dropdown-item"
-                        to="/profile"
-                        onClick={() => setDropdownOpen(false)}
-                      >
-                        Thông tin cá nhân
-                      </Link>
-                    </li>
-
-                    <li>
-                      <hr className="dropdown-divider border-secondary" />
-                    </li>
-
-                    <li>
-                      <button
-                        className="dropdown-item text-danger d-flex align-items-center gap-2"
-                        onClick={handleLogout}
-                      >
-                        <LogOut size={16} />
-                        Đăng xuất
-                      </button>
-                    </li>
-                  </ul>
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
                 )}
-              </li>
-            )}
+              </Link>
+            </>
+          )}
 
-          </ul>
+          {!isAuthenticated ? (
+            <div className="d-flex align-items-center gap-2">
+              <Link to="/login" className="btn btn-ghost btn-sm px-3 py-2">
+                Đăng nhập
+              </Link>
+              <Link
+                to="/register"
+                className="btn btn-accent btn-sm px-3 py-2 d-none d-sm-inline-block"
+              >
+                Đăng ký
+              </Link>
+            </div>
+          ) : (
+            <div className="position-relative" ref={menuRef}>
+              <button
+                type="button"
+                className="nav-item-link d-inline-flex align-items-center gap-2 border-0 bg-transparent"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-expanded={menuOpen}
+                aria-haspopup="menu"
+              >
+                <span
+                  className="rounded-circle d-grid flex-shrink-0"
+                  style={{
+                    width: 26,
+                    height: 26,
+                    background: 'var(--surface-3)',
+                    placeItems: 'center',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    color: 'var(--text)',
+                  }}
+                >
+                  {displayName.charAt(0).toUpperCase()}
+                </span>
+                <span className="d-none d-lg-inline text-truncate" style={{ maxWidth: 130 }}>
+                  {displayName}
+                </span>
+                <ChevronDown size={14} />
+              </button>
+
+              {menuOpen && (
+                <div className="menu-panel" role="menu">
+                  <Link to="/profile" className="menu-item" role="menuitem">
+                    <User size={16} /> Thông tin cá nhân
+                  </Link>
+                  <Link to="/my-tickets" className="menu-item" role="menuitem">
+                    <Ticket size={16} /> Vé của tôi
+                  </Link>
+                  <hr className="divider my-1" />
+                  <button
+                    type="button"
+                    className="menu-item"
+                    style={{ color: 'var(--danger)' }}
+                    onClick={handleLogout}
+                    role="menuitem"
+                  >
+                    <LogOut size={16} /> Đăng xuất
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm d-lg-none px-2 py-2"
+            onClick={() => setMobileOpen((v) => !v)}
+            aria-expanded={mobileOpen}
+            aria-label="Mở menu"
+          >
+            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
         </div>
       </div>
-    </nav>
+
+      {/* Mobile drawer */}
+      {mobileOpen && (
+        <div
+          className="d-lg-none border-top"
+          style={{
+            background: 'var(--surface-1)',
+            borderColor: 'var(--border)',
+            boxShadow: 'var(--shadow-2)',
+          }}
+        >
+          <div className="container py-3 d-flex flex-column gap-1">
+            {NAV_LINKS.map(({ to, label, icon: Icon, match }) => (
+              <Link
+                key={to}
+                to={to}
+                className={`nav-item-link d-flex align-items-center gap-2${
+                  match(location.pathname) ? ' is-active' : ''
+                }`}
+              >
+                {Icon && <Icon size={16} />}
+                {label}
+              </Link>
+            ))}
+            <Link
+              to="/for-organizers"
+              className="nav-item-link d-flex align-items-center gap-2"
+              style={{ color: 'var(--accent)' }}
+            >
+              <Megaphone size={16} /> Bạn là ban tổ chức?
+            </Link>
+            {isAuthenticated && (
+              <Link to="/my-tickets" className="nav-item-link d-flex align-items-center gap-2">
+                <Ticket size={16} /> Vé của tôi
+              </Link>
+            )}
+            {!isAuthenticated && (
+              <Link to="/register" className="nav-item-link d-flex align-items-center gap-2">
+                <User size={16} /> Đăng ký tài khoản
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+    </header>
   );
 };
 

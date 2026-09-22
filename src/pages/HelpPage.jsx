@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { HelpCircle, Ticket, ShieldCheck, Rocket, Mail, Phone, ChevronRight } from 'lucide-react';
 

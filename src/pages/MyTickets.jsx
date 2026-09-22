@@ -1,175 +1,211 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Ticket, QrCode, Download, Loader2, CreditCard } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { getMyBookings } from '../utils/api';
-import { API_BASE_URL } from '../utils/constants';
+import {
+  Ticket,
+  Download,
+  Loader2,
+  CreditCard,
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
+import { getMyBookings, downloadInvoice } from '../utils/api';
+import { useToast } from '../context/ToastContext';
+import { formatCurrency, formatDateTime } from '../utils/constants';
+
+const STATUS = {
+  PAID: { label: 'Đã thanh toán', pill: 'pill-live' },
+  PENDING: { label: 'Chờ thanh toán', pill: 'pill-warn' },
+  FAILED: { label: 'Thất bại', pill: 'pill-danger' },
+  CANCELLED: { label: 'Đã hủy', pill: 'pill-closed' },
+  REFUNDED: { label: 'Đã hoàn tiền', pill: 'pill-neutral' },
+};
 
 const MyTickets = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { token } = useAuth();
+  const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [downloading, setDownloading] = useState(null);
+  const toast = useToast();
 
-  useEffect(() => {
-    const fetchMyOrders = async () => {
-      try {
-        const data = await getMyBookings();
-        if (data.code === 1000) {
-          setOrders(data.result.content || []);
-        }
-      } catch (error) {
-        console.error("Failed to fetch tickets:", error);
-      } finally {
-        setLoading(false);
+  const fetchOrders = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await getMyBookings({ page, size: 10 });
+      if (data?.code === 1000 && data.result) {
+        setOrders(data.result.content || []);
+        setTotalPages(Math.max(data.result.totalPages || 1, 1));
+      } else {
+        setOrders([]);
+        setError(data?.message || 'Không tải được danh sách đơn hàng.');
       }
-    };
-
-    if (token) {
-      fetchMyOrders();
-    } else {
+    } catch (err) {
+      setOrders([]);
+      setError(err.message);
+    } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [page]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
 
   const handleDownloadInvoice = async (orderId) => {
+    setDownloading(orderId);
     try {
-      const response = await fetch(`${API_BASE_URL}/bookings/${orderId}/invoice`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Invoice_${orderId}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-      } else {
-        alert("Không thể tải hóa đơn. Vui lòng thử lại sau.");
-      }
-    } catch (error) {
-      console.error("Download invoice failed:", error);
-      alert("Lỗi kết nối máy chủ.");
+      const response = await downloadInvoice(orderId);
+      const url = window.URL.createObjectURL(
+        new Blob([response.data], { type: 'application/pdf' }),
+      );
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Invoice_${orderId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      toast?.error(err.message || 'Không tải được hóa đơn.');
+    } finally {
+      setDownloading(null);
     }
   };
 
-  const handleResumePayment = async (paymentUrl) => {
-    if (!window.confirm("Bạn muốn tiếp tục thanh toán cho đơn hàng này?")) return;
-    
-    if (paymentUrl) {
-      window.location.href = paymentUrl;
-    } else {
-      alert("Link thanh toán không khả dụng hoặc đã hết hạn. Vui lòng thử lại sau.");
+  const handleResumePayment = (order) => {
+    if (!order.paymentUrl) {
+      toast?.warning('Link thanh toán đã hết hạn. Vui lòng đặt lại vé.');
+      return;
     }
-  };
-
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'PAID':
-        return <span className="badge bg-success mb-3">Đã thanh toán</span>;
-      case 'PENDING':
-        return <span className="badge bg-warning text-dark mb-3">Chờ thanh toán</span>;
-      case 'FAILED':
-      case 'CANCELLED':
-        return <span className="badge bg-danger mb-3">Đã hủy / Thất bại</span>;
-      default:
-        return <span className="badge bg-secondary mb-3">{status}</span>;
-    }
+    window.location.href = order.paymentUrl;
   };
 
   return (
     <div className="container py-4">
-      <div className="d-flex justify-content-between align-items-center mb-5 animate-fade-up">
-        <h2 className="fw-bold mb-0">Vé của tôi</h2>
-      </div>
+      <h1 className="h4 fw-bold mb-4">Vé của tôi</h1>
 
-      <div className="row g-4">
-        {loading ? (
-          <div className="text-center py-5">
-            <Loader2 className="spinner-border text-primary animate-spin mx-auto" />
-          </div>
-        ) : !token ? (
-           <div className="text-center py-5 text-muted glass-card mx-auto" style={{ maxWidth: '600px' }}>
-            <Ticket size={48} className="mb-3 opacity-50" />
-            <h4>Vui lòng đăng nhập để xem vé.</h4>
-            <Link to="/login" className="btn btn-gradient px-4 py-2 rounded-pill mt-3">Đăng nhập ngay</Link>
-          </div>
-        ) : orders.length === 0 ? (
-          <div className="text-center py-5 text-muted glass-card mx-auto" style={{ maxWidth: '600px' }}>
-            <Ticket size={48} className="mb-3 opacity-50" />
-            <h4>Bạn chưa mua vé nào.</h4>
-            <p>Hãy khám phá các sự kiện và đặt vé</p>
-            <Link to="/" className="btn btn-gradient px-4 py-2 rounded-pill mt-3">Khám phá sự kiện</Link>
-          </div>
-        ) : (
-          orders.map((order, idx) => (
-            <div key={idx} className="col-12 animate-fade-up" style={{ animationDelay: `${0.1 * idx}s` }}>
-              <div className="glass-card overflow-hidden">
-                <div className="row g-0">
-                  {/* Left: Thông tin Order */}
-                  <div className="col-md-4 bg-dark bg-opacity-50 p-4 border-end border-secondary">
-                    {getStatusBadge(order.paymentStatus)}
-                    <h5 className="fw-bold mb-1">Mã đơn: {order.id}</h5>
-                    <p className="text-muted small mb-4">Ngày đặt: {new Date(order.orderDate).toLocaleString('vi-VN')}</p>
-                    
-                    <div className="d-flex justify-content-between text-muted small mb-4">
-                      <span>Tổng tiền:</span>
-                      <span className="text-gradient fw-bold fs-5">{order.totalAmount?.toLocaleString('vi-VN')}đ</span>
+      {loading ? (
+        <div className="text-center py-5 text-muted">
+          <Loader2 size={28} className="spin mb-3" />
+          <p className="small mb-0">Đang tải đơn hàng…</p>
+        </div>
+      ) : error ? (
+        <div className="panel p-5 text-center mx-auto" style={{ maxWidth: 480 }}>
+          <AlertCircle size={32} className="mb-3" style={{ color: 'var(--danger)' }} />
+          <h2 className="h6 fw-bold mb-2">Không tải được đơn hàng</h2>
+          <p className="text-muted small mb-4">{error}</p>
+          <button className="btn btn-accent px-4 py-2" onClick={fetchOrders}>
+            Thử lại
+          </button>
+        </div>
+      ) : orders.length === 0 ? (
+        <div className="panel p-5 text-center mx-auto" style={{ maxWidth: 480 }}>
+          <Ticket size={32} className="text-muted mb-3" />
+          <h2 className="h6 fw-bold mb-2">Bạn chưa có vé nào</h2>
+          <p className="text-muted small mb-4">
+            Các vé bạn đặt sẽ xuất hiện tại đây.
+          </p>
+          <Link to="/" className="btn btn-accent px-4 py-2">
+            Khám phá sự kiện
+          </Link>
+        </div>
+      ) : (
+        <div className="d-flex flex-column gap-3">
+          {orders.map((order) => {
+            const status = STATUS[order.paymentStatus] || {
+              label: order.paymentStatus,
+              pill: 'pill-neutral',
+            };
+
+            return (
+              <div key={order.id} className="panel p-4">
+                <div className="d-flex flex-wrap align-items-start justify-content-between gap-3">
+                  <div>
+                    <div className="d-flex align-items-center gap-2 mb-2">
+                      <span className={`pill ${status.pill}`}>{status.label}</span>
+                      <span className="text-muted" style={{ fontSize: '0.75rem' }}>
+                        {order.paymentMethod}
+                      </span>
                     </div>
-
-                    <div className="d-flex flex-column gap-2">
-                      {order.paymentStatus === 'PAID' ? (
-                        <button 
-                          className="btn btn-outline-light btn-sm w-100 d-flex align-items-center justify-content-center gap-2"
-                          onClick={() => handleDownloadInvoice(order.id)}
-                        >
-                          <Download size={16} /> Tải Hóa đơn PDF
-                        </button>
-                      ) : order.paymentStatus === 'PENDING' ? (
-                        <button 
-                          className="btn btn-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-2"
-                          onClick={() => handleResumePayment(order.paymentUrl)}
-                        >
-                          <CreditCard size={16} />
-                          Tiếp tục thanh toán
-                        </button>
-                      ) : null}
+                    <div className="fw-semibold small mb-1">Đơn hàng #{order.id}</div>
+                    <div className="text-muted" style={{ fontSize: '0.8125rem' }}>
+                      Đặt lúc {formatDateTime(order.orderDate)}
                     </div>
                   </div>
 
-                  {/* Right: Danh sách Ticket */}
-                  <div className="col-md-8 p-4">
-                    <h6 className="fw-bold text-muted mb-4 d-flex align-items-center gap-2">
-                      <QrCode size={18} /> {order.paymentStatus === 'PAID' ? 'Danh sách vé điện tử' : 'Thông tin đặt chỗ'}
-                    </h6>
-                    
-                    {order.paymentStatus === 'PAID' ? (
-                      <>
-                        <p className="small text-muted mb-3">Hóa đơn và mã vé đã được gửi vào Email của bạn</p>
-                        <div className="alert alert-info bg-dark border-info text-info small">
-                          Hệ thống đã xuất hóa đơn điện tử cho đơn hàng này. Vui lòng kiểm tra Email.
-                        </div>
-                      </>
-                    ) : order.paymentStatus === 'PENDING' ? (
-                      <div className="alert alert-warning bg-dark border-warning text-warning small">
-                        Đơn hàng của bạn đang chờ thanh toán. Vui lòng hoàn tất giao dịch để nhận vé điện tử.
-                      </div>
-                    ) : (
-                      <div className="alert alert-secondary bg-dark border-secondary text-muted small">
-                        Đơn hàng này đã bị hủy hoặc giao dịch thất bại.
-                      </div>
+                  <div className="text-lg-end">
+                    <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                      Tổng tiền
+                    </div>
+                    <div className="fw-bold fs-5 mb-2">
+                      {formatCurrency(order.totalAmount)}
+                    </div>
+
+                    {order.paymentStatus === 'PAID' && (
+                      <button
+                        className="btn btn-ghost btn-sm px-3 py-2 d-inline-flex align-items-center gap-2"
+                        onClick={() => handleDownloadInvoice(order.id)}
+                        disabled={downloading === order.id}
+                      >
+                        {downloading === order.id ? (
+                          <Loader2 size={14} className="spin" />
+                        ) : (
+                          <Download size={14} />
+                        )}
+                        Hóa đơn PDF
+                      </button>
+                    )}
+                    {order.paymentStatus === 'PENDING' && (
+                      <button
+                        className="btn btn-accent btn-sm px-3 py-2 d-inline-flex align-items-center gap-2"
+                        onClick={() => handleResumePayment(order)}
+                      >
+                        <CreditCard size={14} /> Tiếp tục thanh toán
+                      </button>
                     )}
                   </div>
                 </div>
+
+                <div
+                  className="mt-3 pt-3 border-top text-muted"
+                  style={{ fontSize: '0.8125rem' }}
+                >
+                  {order.paymentStatus === 'PAID'
+                    ? 'Vé điện tử và hóa đơn đã được gửi tới email của bạn.'
+                    : order.paymentStatus === 'PENDING'
+                      ? 'Đơn hàng đang chờ thanh toán. Hoàn tất giao dịch để nhận vé.'
+                      : 'Đơn hàng này đã kết thúc và không còn hiệu lực.'}
+                </div>
               </div>
-            </div>
-          ))
-        )}
-      </div>
+            );
+          })}
+        </div>
+      )}
+
+      {!loading && !error && totalPages > 1 && (
+        <nav className="d-flex justify-content-center align-items-center gap-2 mt-4">
+          <button
+            className="btn btn-ghost btn-sm px-3 py-2 d-inline-flex align-items-center gap-1"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}
+          >
+            <ChevronLeft size={15} /> Trước
+          </button>
+          <span className="small text-muted px-2">
+            Trang <strong style={{ color: 'var(--text)' }}>{page}</strong> / {totalPages}
+          </span>
+          <button
+            className="btn btn-ghost btn-sm px-3 py-2 d-inline-flex align-items-center gap-1"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Sau <ChevronRight size={15} />
+          </button>
+        </nav>
+      )}
     </div>
   );
 };

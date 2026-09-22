@@ -1,5 +1,11 @@
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Ticket } from 'lucide-react';
+
 import Navbar from './components/Navbar';
+import RequireAuth from './components/RequireAuth';
+import { ToastProvider } from './context/ToastContext';
+
 import Home from './pages/Home';
 import EventDetail from './pages/EventDetail';
 import Checkout from './pages/Checkout';
@@ -11,70 +17,164 @@ import Profile from './pages/Profile';
 import ForgotPassword from './pages/ForgotPassword';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentCancel from './pages/PaymentCancel';
+import NotFound from './pages/NotFound';
 
-// Blog & Support Pages
+// Blog & support
 import BlogList from './pages/BlogList';
 import BlogDetail from './pages/BlogDetail';
 import HelpPage from './pages/HelpPage';
 import GuidePage from './pages/GuidePage';
 import SecurityPage from './pages/SecurityPage';
 import OrganizerHandbook from './pages/OrganizerHandbook';
+import ForOrganizers from './pages/ForOrganizers';
 
 import './index.css';
+
+/** The home page owns a full-bleed hero, so only the other pages get padding. */
+const PageArea = ({ children }) => {
+  const { pathname } = useLocation();
+  const isFullBleed = pathname === '/';
+  return (
+    <main
+      className="flex-grow-1"
+      style={{ paddingTop: isFullBleed ? 'var(--nav-h)' : 'calc(var(--nav-h) + 8px)' }}
+    >
+      {children}
+    </main>
+  );
+};
+
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+};
+
+const FOOTER_LINKS = [
+  { to: '/', label: 'Trang chủ' },
+  { to: '/blog', label: 'Tin tức' },
+  { to: '/guide', label: 'Hướng dẫn mua vé' },
+  { to: '/security', label: 'An toàn & Bảo mật' },
+  { to: '/for-organizers', label: 'Dành cho ban tổ chức' },
+  { to: '/help', label: 'Trợ giúp' },
+];
+
+const Footer = () => (
+  <footer
+    className="mt-auto border-top"
+    style={{ borderColor: 'var(--border)', background: 'var(--bg-elevated)' }}
+  >
+    <div className="container py-4">
+      <div className="row gy-3 align-items-center">
+        <div className="col-md-5">
+          <div className="d-flex align-items-center gap-2 mb-1">
+            <span
+              style={{
+                width: 24,
+                height: 24,
+                background: 'var(--accent)',
+                borderRadius: 6,
+                display: 'grid',
+                placeItems: 'center',
+              }}
+            >
+              <Ticket size={14} color="#fff" />
+            </span>
+            <span className="fw-bold">EventTicket</span>
+          </div>
+          <p className="mb-0 small text-muted">
+            Nền tảng đặt vé sự kiện và tin tức trực tuyến.
+          </p>
+        </div>
+        <div className="col-md-7">
+          <ul className="list-unstyled d-flex flex-wrap justify-content-md-end gap-3 mb-0 small">
+            {FOOTER_LINKS.map(({ to, label }) => (
+              <li key={to}>
+                <Link to={to} className="text-muted text-decoration-none hover-primary">
+                  {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <div
+        className="pt-3 mt-3 border-top small text-muted"
+        style={{ borderColor: 'var(--border)' }}
+      >
+        © {new Date().getFullYear()} FiveTickets Team.
+      </div>
+    </div>
+  </footer>
+);
 
 function App() {
   return (
     <Router>
-      <div className="d-flex flex-column min-vh-100">
-        <Navbar />
-        <main className="flex-grow-1 pt-5 mt-4">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/events/:id" element={<EventDetail />} />
-            <Route path="/cart" element={<Cart />} />
-            <Route path="/checkout" element={<Checkout />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/my-tickets" element={<MyTickets />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/payment/success" element={<PaymentSuccess />} />
-            <Route path="/payment/cancel" element={<PaymentCancel />} />
+      <ToastProvider>
+        <ScrollToTop />
+        <div className="d-flex flex-column min-vh-100">
+          <Navbar />
+          <PageArea>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/events/:id" element={<EventDetail />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
 
-            {/* Blog & Support Routes */}
-            <Route path="/blog" element={<BlogList />} />
-            <Route path="/blog/:slug" element={<BlogDetail />} />
-            <Route path="/help" element={<HelpPage />} />
-            <Route path="/guide" element={<GuidePage />} />
-            <Route path="/security" element={<SecurityPage />} />
-            <Route path="/organizer-handbook" element={<OrganizerHandbook />} />
-          </Routes>
-        </main>
+              <Route
+                path="/cart"
+                element={
+                  <RequireAuth>
+                    <Cart />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/checkout"
+                element={
+                  <RequireAuth>
+                    <Checkout />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <RequireAuth>
+                    <Profile />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/my-tickets"
+                element={
+                  <RequireAuth>
+                    <MyTickets />
+                  </RequireAuth>
+                }
+              />
 
-        <footer className="py-4 mt-auto border-top border-secondary border-opacity-25 bg-dark bg-opacity-75">
-          <div className="container">
-            <div className="row gy-3 align-items-center justify-content-between">
-              <div className="col-md-4 text-center text-md-start">
-                <span className="fw-bold text-gradient fs-5">Event Ticket</span>
-                <p className="mb-0 small text-muted">Nền tảng đặt vé sự kiện & tin tức trực tuyến hàng đầu.</p>
-              </div>
-              <div className="col-md-8">
-                <ul className="list-unstyled d-flex flex-wrap justify-content-center justify-content-md-end gap-3 gap-md-4 mb-0 small">
-                  <li><Link to="/" className="text-muted text-decoration-none hover-primary">Trang chủ</Link></li>
-                  <li><Link to="/blog" className="text-muted text-decoration-none hover-primary">Tin tức & Blog</Link></li>
-                  <li><Link to="/guide" className="text-muted text-decoration-none hover-primary">Hướng dẫn mua vé</Link></li>
-                  <li><Link to="/security" className="text-muted text-decoration-none hover-primary">An toàn & Bảo mật</Link></li>
-                  <li><Link to="/organizer-handbook" className="text-muted text-decoration-none hover-primary">Cẩm nang BTC</Link></li>
-                  <li><Link to="/help" className="text-muted text-decoration-none hover-primary">Trợ giúp</Link></li>
-                </ul>
-              </div>
-            </div>
-            <div className="text-center pt-3 mt-3 border-top border-secondary border-opacity-25">
-              <p className="mb-0 small text-muted">© 2026 FiveTickets Team. All rights reserved.</p>
-            </div>
-          </div>
-        </footer>
-      </div>
+              <Route path="/payment/success" element={<PaymentSuccess />} />
+              <Route path="/payment/cancel" element={<PaymentCancel />} />
+
+              <Route path="/blog" element={<BlogList />} />
+              <Route path="/blog/:slug" element={<BlogDetail />} />
+              <Route path="/help" element={<HelpPage />} />
+              <Route path="/guide" element={<GuidePage />} />
+              <Route path="/security" element={<SecurityPage />} />
+              <Route path="/organizer-handbook" element={<OrganizerHandbook />} />
+              <Route path="/for-organizers" element={<ForOrganizers />} />
+
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </PageArea>
+          <Footer />
+        </div>
+      </ToastProvider>
     </Router>
   );
 }

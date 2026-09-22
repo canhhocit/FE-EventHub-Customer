@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { Search, ShoppingCart, CreditCard, QrCode, CheckCircle, AlertTriangle, Phone, ChevronLeft } from 'lucide-react';
 

@@ -1,6 +1,5 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
-import { Rocket, FileText, DollarSign, QrCode, ArrowRight, ChevronLeft, Award } from 'lucide-react';
+import { FileText, DollarSign, QrCode, ArrowRight, ChevronLeft, Award } from 'lucide-react';
 
 const OrganizerHandbook = () => {
   return (

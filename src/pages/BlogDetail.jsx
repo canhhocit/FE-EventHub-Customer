@@ -9,11 +9,10 @@ import {
   ChevronRight,
   Ticket,
   User,
-  Check,
-  Tag
+  Check
 } from 'lucide-react';
 import { getBlogPostBySlug, getEventDetail } from '../utils/api';
-import { getImageUrl } from '../utils/constants';
+import { getImageUrl, formatDate } from '../utils/constants';
 
 const BlogDetail = () => {
   const { slug } = useParams();
@@ -158,7 +157,7 @@ const BlogDetail = () => {
               <div className="d-flex align-items-center gap-4">
                 <span className="d-flex align-items-center gap-2">
                   <Calendar size={16} className="text-primary" />
-                  {new Date(post.publishedAt || Date.now()).toLocaleDateString('vi-VN')}
+                  {formatDate(post.publishedAt || post.createdAt)}
                 </span>
                 <span className="d-flex align-items-center gap-2">
                   <User size={16} className="text-primary" />

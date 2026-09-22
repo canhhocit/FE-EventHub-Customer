@@ -1,568 +1,485 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Tag, CheckCircle, X } from "lucide-react";
-import { useCart } from "../context/CartContext";
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import {
+  Tag,
+  CheckCircle2,
+  X,
+  Loader2,
+  ChevronLeft,
+  AlertCircle,
+} from 'lucide-react';
+import { useCart } from '../context/CartContext';
+import { useToast } from '../context/ToastContext';
+import { checkoutSelected, getVouchersForEvent } from '../utils/api';
+import { formatCurrency } from '../utils/constants';
+
+const PAYMENT_METHODS = [
+  {
+    id: 'PAYOS',
+    name: 'VietQR (PayOS)',
+    note: 'Quét mã QR qua ứng dụng ngân hàng',
+  },
+  {
+    id: 'MOMO',
+    name: 'MoMo',
+    note: 'Giả lập — dùng cho môi trường thử nghiệm',
+  },
+];
+
+/** Mirrors VoucherService.calculateDiscount so the preview matches the charge. */
+const computeDiscount = (voucher, applicableAmount) => {
+  if (!voucher || applicableAmount <= 0) return 0;
+  const amount = Number(voucher.amount) || 0;
+  let discount;
+
+  if (String(voucher.discountType).toUpperCase() === 'PERCENTAGE') {
+    discount = (applicableAmount * amount) / 100;
+    const max = voucher.maxDiscount == null ? null : Number(voucher.maxDiscount);
+    if (max !== null && discount > max) discount = max;
+  } else {
+    discount = amount;
+  }
+
+  return Math.min(discount, applicableAmount);
+};
 
 const Checkout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { cart, fetchBackendCart } = useCart();
+  const { cart, loading: cartLoading, fetchBackendCart } = useCart();
+  const toast = useToast();
 
-  const selectedCartItemIds = location.state?.selectedCartItemIds || [];
-  const checkoutItems = cart.filter((item) =>
-    selectedCartItemIds.includes(item.cartItemId),
-  );
+  // Keep the ids from the cart page, but survive a refresh (which wipes
+  // router state) by remembering them for the length of the session.
+  const [selectedIds] = useState(() => {
+    const fromState = location.state?.selectedCartItemIds;
+    if (Array.isArray(fromState) && fromState.length) {
+      sessionStorage.setItem('checkoutItemIds', JSON.stringify(fromState));
+      return fromState;
+    }
+    try {
+      const stored = JSON.parse(sessionStorage.getItem('checkoutItemIds') || '[]');
+      return Array.isArray(stored) ? stored : [];
+    } catch {
+      return [];
+    }
+  });
 
-  const [paymentMethod, setPaymentMethod] = useState("PAYOS");
+  const [paymentMethod, setPaymentMethod] = useState('PAYOS');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [eventVouchers, setEventVouchers] = useState({}); // { eventId: [vouchers] }
-  const [selectedVouchers, setSelectedVouchers] = useState({}); // { eventId: voucherId }
+  // Set the moment an order goes through, so emptying the cart afterwards
+  // can't race the redirect and bounce the user back to /cart.
+  const settled = useRef(false);
+
+  const [voucher, setVoucher] = useState(null);
+  const [vouchersByEvent, setVouchersByEvent] = useState({});
   const [voucherLoading, setVoucherLoading] = useState(false);
-  const [showVoucherModal, setShowVoucherModal] = useState(false);
-  const [currentEventId, setCurrentEventId] = useState(null);
+  const [voucherModalEventId, setVoucherModalEventId] = useState(null);
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      alert("Vui lòng đăng nhập để thanh toán!");
-      navigate("/login");
-      return;
-    }
-    if (checkoutItems.length === 0 && !success) {
-      navigate("/cart");
-    }
-  }, [checkoutItems, navigate, success]);
-
-  const subtotal = checkoutItems.reduce(
-    (total, item) => total + item.price * item.quantity,
-    0,
+  const items = useMemo(
+    () => cart.filter((item) => selectedIds.includes(item.cartItemId)),
+    [cart, selectedIds],
   );
 
-  // Group items by eventId
-  const groupedByEvent = checkoutItems.reduce((acc, item) => {
-    if (!acc[item.eventId]) {
-      acc[item.eventId] = {
-        eventId: item.eventId,
-        eventName: item.eventName,
-        items: [],
-        totalPrice: 0,
-      };
-    }
-    acc[item.eventId].items.push(item);
-    acc[item.eventId].totalPrice += item.price * item.quantity;
-    return acc;
-  }, {});
+  const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
-  const eventGroups = Object.values(groupedByEvent);
-
-  const handleOpenVoucherModal = async (eventId) => {
-    const eventIdKey = String(eventId);
-    setCurrentEventId(eventIdKey);
-    setShowVoucherModal(true);
-
-    if (eventVouchers[eventIdKey]) {
-      return; // Already loaded
-    }
-
-    setVoucherLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      const apiBase =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-      const response = await fetch(`${apiBase}/vouchers/event/${eventId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      const data = await response.json();
-
-      if (data.code === 1000 && Array.isArray(data.result)) {
-        setEventVouchers((prev) => ({
-          ...prev,
-          [eventIdKey]: data.result,
-        }));
-      } else {
-        alert("Không thể tải danh sách voucher");
+  const eventGroups = useMemo(() => {
+    const map = new Map();
+    items.forEach((item) => {
+      const key = String(item.eventId);
+      if (!map.has(key)) {
+        map.set(key, {
+          eventId: key,
+          eventName: item.eventName,
+          items: [],
+          totalPrice: 0,
+        });
       }
-    } catch (error) {
-      console.error(error);
-      alert("Lỗi hệ thống khi tải voucher");
-    } finally {
-      setVoucherLoading(false);
-    }
-  };
-
-  const handleSelectVoucher = (voucher) => {
-    setSelectedVouchers((prev) => ({
-      ...prev,
-      [currentEventId]: voucher,
-    }));
-    setShowVoucherModal(false);
-  };
-
-  const handleRemoveVoucher = (eventId) => {
-    const eventIdKey = String(eventId);
-    setSelectedVouchers((prev) => {
-      const updated = { ...prev };
-      delete updated[eventIdKey];
-      return updated;
+      const group = map.get(key);
+      group.items.push(item);
+      group.totalPrice += item.price * item.quantity;
     });
-  };
+    return [...map.values()];
+  }, [items]);
 
-  const isVoucherValid = (eventId, voucher) => {
-    const eventIdKey = String(eventId);
-    const eventTotal = groupedByEvent[eventIdKey]?.totalPrice || 0;
-    if (voucher.minOrderAmount && eventTotal < voucher.minOrderAmount) {
-      return false;
-    }
-    return true;
-  };
-
-  const getVoucherDiscount = (voucher, eventTotal) => {
+  // The backend applies one voucher to the events it covers, so the preview
+  // uses that same base amount.
+  const voucherBase = useMemo(() => {
     if (!voucher) return 0;
+    if (voucher.eventId == null) return subtotal;
+    const group = eventGroups.find((g) => g.eventId === String(voucher.eventId));
+    return group?.totalPrice || 0;
+  }, [voucher, eventGroups, subtotal]);
 
-    const discountType = String(voucher.discountType || "").toUpperCase();
-    const amount = Number(voucher.amount || 0);
+  const discount = computeDiscount(voucher, voucherBase);
+  const total = Math.max(0, subtotal - discount);
 
-    if (discountType.includes("PERCENT")) {
-      let discount = (eventTotal * amount) / 100;
-      if (voucher.maxDiscount !== null && voucher.maxDiscount !== undefined) {
-        discount = Math.min(discount, Number(voucher.maxDiscount));
-      }
-      return discount;
+  // Nothing to pay for → back to the cart.
+  useEffect(() => {
+    if (success || cartLoading || settled.current) return;
+    if (items.length === 0) {
+      navigate('/cart', { replace: true });
     }
+  }, [items.length, cartLoading, success, navigate]);
 
-    if (
-      discountType.includes("FIXED") ||
-      discountType.includes("AMOUNT") ||
-      discountType.includes("MONEY")
-    ) {
-      return amount;
-    }
+  // Drop a voucher that no longer applies to what's being bought.
+  useEffect(() => {
+    if (voucher && voucherBase <= 0) setVoucher(null);
+  }, [voucher, voucherBase]);
 
-    return amount;
-  };
+  const openVoucherModal = useCallback(
+    async (eventId) => {
+      setVoucherModalEventId(eventId);
+      if (vouchersByEvent[eventId]) return;
 
-  const calculateTotalDiscount = () => {
-    let total = 0;
-    Object.entries(selectedVouchers).forEach(([eventId, voucher]) => {
-      const eventIdKey = String(eventId);
-      if (voucher) {
-        const eventTotal = groupedByEvent[eventIdKey]?.totalPrice || 0;
-        total += getVoucherDiscount(voucher, eventTotal);
+      setVoucherLoading(true);
+      try {
+        const data = await getVouchersForEvent(eventId);
+        setVouchersByEvent((prev) => ({
+          ...prev,
+          [eventId]: data?.code === 1000 && Array.isArray(data.result) ? data.result : [],
+        }));
+      } catch (err) {
+        setVouchersByEvent((prev) => ({ ...prev, [eventId]: [] }));
+        toast?.error(err.message || 'Không tải được danh sách voucher.');
+      } finally {
+        setVoucherLoading(false);
       }
-    });
-    return total;
+    },
+    [vouchersByEvent, toast],
+  );
+
+  const isVoucherUsable = (v, group) => {
+    const base = v.eventId == null ? subtotal : group.totalPrice;
+    if (v.minOrderAmount && subtotal < Number(v.minOrderAmount)) return false;
+    if (v.quantity != null && Number(v.quantity) <= 0) return false;
+    return base > 0;
   };
 
   const handlePayment = async () => {
+    if (loading || items.length === 0) return;
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const apiBase =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-
-      // Build query params with voucher codes
-      const voucherParams = [];
-      Object.entries(selectedVouchers).forEach(([eventId, voucher]) => {
-        if (voucher && voucher.code) {
-          voucherParams.push(`voucherCode=${encodeURIComponent(voucher.code)}`);
-        }
+      const data = await checkoutSelected({
+        itemIds: selectedIds,
+        paymentMethod,
+        voucherCode: voucher?.code || null,
       });
 
-      const queryString =
-        voucherParams.length > 0 ? `&${voucherParams.join("&")}` : "";
-
-      const response = await fetch(
-        `${apiBase}/bookings/checkout-selected?paymentMethod=${paymentMethod}${queryString}&platform=web`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(selectedCartItemIds),
-        },
-      );
-
-      const data = await response.json();
-
-      if (data.code === 1000) {
-        // If PayOS provides a payment URL, redirect to it
-        if (
-          data.result &&
-          data.result.paymentUrl &&
-          paymentMethod === "PAYOS"
-        ) {
-          window.location.href = data.result.paymentUrl;
-          return;
-        }
-
-        // For MoMo or cases without external redirect, show success immediately
-        await fetchBackendCart();
-        setSuccess(true);
-        setTimeout(() => {
-          navigate("/my-tickets");
-        }, 3000);
-        return;
-      } else {
-        alert(
-          "Thanh toán thất bại: " + (data.message || "Vui lòng thử lại sau"),
-        );
+      if (data?.code !== 1000) {
+        throw new Error(data?.message || 'Thanh toán thất bại.');
       }
-    } catch (error) {
-      console.error("Checkout error:", error);
-      alert("Lỗi hệ thống: Không thể hoàn tất thanh toán do mất kết nối");
+
+      settled.current = true;
+      sessionStorage.removeItem('checkoutItemIds');
+      const paymentUrl = data.result?.paymentUrl;
+
+      // PayOS hands back an external checkout link; the MoMo simulation hands
+      // back an in-app path, which must be routed, not assigned to location.
+      if (paymentUrl && /^https?:\/\//i.test(paymentUrl)) {
+        window.location.href = paymentUrl;
+        return;
+      }
+
+      if (paymentUrl?.startsWith('/')) {
+        navigate(paymentUrl, { replace: true });
+        fetchBackendCart().catch(() => {});
+        return;
+      }
+
+      setSuccess(true);
+      await fetchBackendCart().catch(() => {});
+      setTimeout(() => navigate('/my-tickets'), 2500);
+    } catch (err) {
+      toast?.error(err.message || 'Không hoàn tất được thanh toán.');
     } finally {
       setLoading(false);
     }
   };
 
-  const totalDiscount = calculateTotalDiscount();
-  const total = subtotal - totalDiscount;
-
   if (success) {
     return (
-      <div className="container py-5 text-center animate-fade-up">
-        <div className="glass-card p-5 mx-auto" style={{ maxWidth: "500px" }}>
-          <CheckCircle size={64} className="text-success mb-4 mx-auto" />
-          <h2 className="fw-bold mb-3">Thanh toán thành công!</h2>
-          <p className="text-muted">
-            Hóa đơn điện tử PDF đã được gửi vào Email của bạn.
-            <br />
-            Hệ thống sẽ chuyển về trang Quản lý vé...
+      <div className="container py-5">
+        <div className="panel p-5 text-center mx-auto" style={{ maxWidth: 480 }}>
+          <CheckCircle2 size={44} className="mb-3" style={{ color: 'var(--success)' }} />
+          <h1 className="h5 fw-bold mb-2">Đặt vé thành công</h1>
+          <p className="text-muted small mb-0">
+            Hóa đơn điện tử đã được gửi tới email của bạn. Đang chuyển tới trang vé…
           </p>
         </div>
       </div>
     );
   }
 
-  // Voucher Modal
-  const voucherModal = (
-    <div
-      className={`modal fade ${showVoucherModal ? "show" : ""}`}
-      style={{ display: showVoucherModal ? "block" : "none" }}
-      tabIndex={-1}
-    >
-      <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content bg-dark text-white border-secondary">
-          <div className="modal-header border-secondary">
-            <h5 className="modal-title fw-bold">Chọn voucher</h5>
-            <button
-              type="button"
-              className="btn-close btn-close-white"
-              onClick={() => setShowVoucherModal(false)}
-            ></button>
-          </div>
-          <div className="modal-body">
-            {voucherLoading ? (
-              <div className="text-center py-4">
-                <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">Đang tải...</span>
-                </div>
-              </div>
-            ) : (eventVouchers[currentEventId] || []).length > 0 ? (
-              <div className="d-flex flex-column gap-2">
-                <button
-                  className="btn btn-outline-secondary text-white text-start p-3"
-                  onClick={() => {
-                    handleRemoveVoucher(currentEventId);
-                    setShowVoucherModal(false);
-                  }}
-                >
-                  Không sử dụng voucher
-                </button>
-                {(eventVouchers[currentEventId] || []).map((voucher) => {
-                  const isValid = isVoucherValid(currentEventId, voucher);
-                  return (
-                    <button
-                      key={voucher.id}
-                      className={`btn text-start p-3 ${
-                        isValid
-                          ? "btn-outline-primary"
-                          : "btn-outline-secondary opacity-50"
-                      }`}
-                      onClick={() => isValid && handleSelectVoucher(voucher)}
-                      disabled={!isValid}
-                    >
-                      <div className="d-flex justify-content-between">
-                        <div>
-                          <div className="fw-bold">{voucher.code}</div>
-                          <small className="text-muted">
-                            {voucher.discountType === "PERCENTAGE"
-                              ? `Giảm ${voucher.amount}%`
-                              : `Giảm ${voucher.amount.toLocaleString("vi-VN")}đ`}
-                          </small>
-                          {voucher.minOrderAmount && (
-                            <div>
-                              <small
-                                className={
-                                  isValid ? "text-muted" : "text-danger"
-                                }
-                              >
-                                Tối thiểu:{" "}
-                                {voucher.minOrderAmount.toLocaleString("vi-VN")}
-                                đ
-                              </small>
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-end">
-                          <small className="text-muted">
-                            Còn: {voucher.quantity}
-                          </small>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-4">
-                <p className="text-muted">Không có voucher khả dụng</p>
-              </div>
-            )}
-          </div>
-        </div>
+  if (cartLoading && items.length === 0) {
+    return (
+      <div className="container py-5 text-center text-muted">
+        <Loader2 size={28} className="spin mb-3" />
+        <p className="small mb-0">Đang tải đơn hàng…</p>
       </div>
-    </div>
-  );
+    );
+  }
+
+  const modalGroup = eventGroups.find((g) => g.eventId === voucherModalEventId);
+  const modalVouchers = vouchersByEvent[voucherModalEventId] || [];
 
   return (
     <div className="container py-4">
-      <h2 className="fw-bold mb-4">Thanh toán</h2>
+      <Link
+        to="/cart"
+        className="d-inline-flex align-items-center gap-1 small text-muted hover-primary mb-3"
+      >
+        <ChevronLeft size={15} /> Giỏ hàng
+      </Link>
+      <h1 className="h4 fw-bold mb-4">Thanh toán</h1>
+
       <div className="row g-4">
-        {/* Cột trái: Thông tin đơn hàng */}
-        <div className="col-lg-8 animate-fade-up">
-          <div className="glass-card p-4 mb-4">
-            <h5 className="fw-bold mb-4">Chi tiết vé</h5>
-            {eventGroups.map((group, idx) => {
-              const eventIdKey = String(group.eventId);
-              const selectedVoucher = selectedVouchers[eventIdKey] || null;
-              const eventDiscount = getVoucherDiscount(
-                selectedVoucher,
-                group.totalPrice,
-              );
-              const eventFinalTotal = group.totalPrice - eventDiscount;
+        <div className="col-lg-8">
+          {/* Order items */}
+          <div className="panel p-4 mb-4">
+            <h2 className="section-title h6 mb-3">Chi tiết đơn hàng</h2>
 
-              return (
-                <div
-                  key={idx}
-                  className="border border-secondary rounded p-3 mb-3"
-                >
-                  <div className="mb-3">
-                    <div className="flex-grow-1">
-                      <h6 className="mb-2">{group.eventName}</h6>
-                      <div>
-                        {group.items.map((item, i) => (
-                          <div
-                            key={i}
-                            className="d-flex justify-content-between mb-1"
-                          >
-                            <small className="text-muted">
-                              {item.ticketTypeName} x {item.quantity}
-                            </small>
-                            <small className="text-muted fw-medium">
-                              {(item.price * item.quantity).toLocaleString(
-                                "vi-VN",
-                              )}
-                              đ
-                            </small>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border-top border-secondary pt-3">
-                    {selectedVoucher ? (
-                      <div className="d-flex justify-content-between align-items-center bg-success bg-opacity-10 p-2 rounded mb-2">
-                        <div>
-                          <small className="text-success fw-bold">
-                            {selectedVoucher.code}
-                          </small>
-                          <br />
-                          <small className="text-muted">
-                            {String(selectedVoucher.discountType || "")
-                              .toUpperCase()
-                              .includes("PERCENT")
-                              ? `Giảm ${selectedVoucher.amount}%`
-                              : `Giảm ${Number(selectedVoucher.amount || 0).toLocaleString("vi-VN")}đ`}
-                          </small>
-                        </div>
-                        <button
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={() => handleRemoveVoucher(eventIdKey)}
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    ) : null}
-                    <button
-                      className="btn btn-sm btn-outline-primary w-100"
-                      onClick={() => handleOpenVoucherModal(eventIdKey)}
-                    >
-                      {selectedVoucher ? "Đổi voucher" : "Chọn voucher"}
-                    </button>
-                    <div className="d-flex justify-content-between align-items-center mt-3 pt-3 border-top border-secondary">
-                      <span className="fw-bold">Tổng tiền:</span>
-                      <div className="text-end">
-                        {eventDiscount > 0 ? (
-                          <>
-                            <small className="text-muted d-block">
-                              <del>
-                                {group.totalPrice.toLocaleString("vi-VN")}đ
-                              </del>
-                            </small>
-                            <span className="fw-bold text-success">
-                              {eventFinalTotal.toLocaleString("vi-VN")}đ
-                            </span>
-                          </>
-                        ) : (
-                          <span className="fw-bold">
-                            {group.totalPrice.toLocaleString("vi-VN")}đ
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="glass-card p-4">
-            <h5 className="fw-bold mb-4">Phương thức thanh toán</h5>
             <div className="d-flex flex-column gap-3">
-              <label
-                className={`d-flex align-items-center gap-3 p-3 border rounded cursor-pointer transition-all ${paymentMethod === "PAYOS" ? "border-primary bg-primary bg-opacity-10" : "border-secondary bg-dark"}`}
-                onClick={() => setPaymentMethod("PAYOS")}
-              >
-                <input
-                  type="radio"
-                  name="payment"
-                  checked={paymentMethod === "PAYOS"}
-                  onChange={() => setPaymentMethod("PAYOS")}
-                  className="form-check-input mt-0"
-                />
-                <img
-                  src="https://th.bing.com/th/id/OIP.7088OwVKnkxm9jJwOy8z5QHaHa?w=161&h=180&c=7&r=0&o=7&dpr=1.1&pid=1.7&rm=3"
-                  height={40}
-                  width={40}
-                  alt="VietQR(PayOS)"
-                  className="rounded object-fit-contain bg-white px-2"
-                />
-                <span className="fw-medium">VietQR</span>
-              </label>
-
-              <label
-                className={`d-flex align-items-center gap-3 p-3 border rounded cursor-pointer transition-all ${paymentMethod === "MOMO" ? "border-primary bg-primary bg-opacity-10" : "border-secondary bg-dark"}`}
-                onClick={() => setPaymentMethod("MOMO")}
-              >
-                <input
-                  type="radio"
-                  name="payment"
-                  checked={paymentMethod === "MOMO"}
-                  onChange={() => setPaymentMethod("MOMO")}
-                  className="form-check-input mt-0"
-                />
-                <img
-                  src="https://cdn.haitrieu.com/wp-content/uploads/2022/10/Logo-MoMo-Square.png"
-                  width={40}
-                  height={40}
-                  alt="Momo"
-                  className="rounded shadow-sm"
-                />
-                <div className="d-flex flex-column">
-                  <span className="fw-medium">Momo</span>
-                  <small className="text-warning">Giả lập</small>
-                </div>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        {/* Cột phải: Tổng tiền & Voucher */}
-        <div
-          className="col-lg-4 animate-fade-up"
-          style={{ animationDelay: "0.1s" }}
-        >
-          <div className="glass-card p-4 sticky-top" style={{ top: "100px" }}>
-            <h5 className="fw-bold mb-4">Tổng cộng</h5>
-
-            {/* Event breakdown */}
-            <div className="mb-3">
               {eventGroups.map((group) => {
-                const eventIdKey = String(group.eventId);
-                const selectedVoucher = selectedVouchers[eventIdKey] || null;
-                const eventDiscount = getVoucherDiscount(
-                  selectedVoucher,
-                  group.totalPrice,
-                );
+                const applies =
+                  voucher &&
+                  (voucher.eventId == null ||
+                    String(voucher.eventId) === group.eventId);
 
                 return (
-                  <div key={eventIdKey} className="mb-2">
-                    <div className="d-flex justify-content-between text-muted small">
-                      <span>{group.eventName}:</span>
-                      <span>{group.totalPrice.toLocaleString("vi-VN")}đ</span>
-                    </div>
-                    {selectedVoucher && eventDiscount > 0 && (
-                      <div className="d-flex justify-content-between text-success small ms-2">
-                        <span>{selectedVoucher.code}:</span>
-                        <span>-{eventDiscount.toLocaleString("vi-VN")}đ</span>
+                  <div
+                    key={group.eventId}
+                    className="p-3 rounded"
+                    style={{
+                      background: 'var(--surface-2)',
+                      border: '1px solid var(--border)',
+                    }}
+                  >
+                    <div className="fw-semibold small mb-2">{group.eventName}</div>
+
+                    {group.items.map((item) => (
+                      <div
+                        key={item.cartItemId}
+                        className="d-flex justify-content-between small text-muted mb-1"
+                      >
+                        <span>
+                          {item.ticketTypeName} × {item.quantity}
+                        </span>
+                        <span>{formatCurrency(item.price * item.quantity)}</span>
                       </div>
-                    )}
+                    ))}
+
+                    <div className="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm px-3 py-1 d-inline-flex align-items-center gap-1"
+                        onClick={() => openVoucherModal(group.eventId)}
+                      >
+                        <Tag size={13} />
+                        {applies ? 'Đổi voucher' : 'Chọn voucher'}
+                      </button>
+                      <span className="fw-semibold">
+                        {formatCurrency(group.totalPrice)}
+                      </span>
+                    </div>
                   </div>
                 );
               })}
             </div>
 
-            <hr className="border-secondary" />
+            {eventGroups.length > 1 && (
+              <p className="text-muted mt-3 mb-0" style={{ fontSize: '0.8125rem' }}>
+                <AlertCircle size={13} className="me-1" />
+                Mỗi đơn hàng chỉ áp dụng được một mã giảm giá.
+              </p>
+            )}
+          </div>
 
-            <div className="d-flex justify-content-between mb-2 text-muted">
-              <span>Tạm tính:</span>
-              <span>{subtotal.toLocaleString("vi-VN")}đ</span>
+          {/* Payment method */}
+          <div className="panel p-4">
+            <h2 className="section-title h6 mb-3">Phương thức thanh toán</h2>
+            <div className="d-flex flex-column gap-2">
+              {PAYMENT_METHODS.map((method) => {
+                const active = paymentMethod === method.id;
+                return (
+                  <label
+                    key={method.id}
+                    className="d-flex align-items-center gap-3 p-3 rounded"
+                    style={{
+                      cursor: 'pointer',
+                      background: active ? 'var(--accent-soft)' : 'var(--surface-2)',
+                      border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="payment"
+                      className="form-check-input mt-0"
+                      checked={active}
+                      onChange={() => setPaymentMethod(method.id)}
+                    />
+                    <div>
+                      <div className="fw-semibold small">{method.name}</div>
+                      <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                        {method.note}
+                      </div>
+                    </div>
+                  </label>
+                );
+              })}
             </div>
-            {totalDiscount > 0 && (
-              <div className="d-flex justify-content-between mb-2 text-success">
-                <span>
-                  <Tag size={14} className="me-1" /> Giảm giá:
+          </div>
+        </div>
+
+        {/* Summary */}
+        <div className="col-lg-4">
+          <div className="panel p-4 sticky-top" style={{ top: 'calc(var(--nav-h) + 16px)' }}>
+            <h2 className="section-title h6 mb-3">Tổng cộng</h2>
+
+            <div className="d-flex justify-content-between small text-muted mb-2">
+              <span>Tạm tính</span>
+              <span style={{ color: 'var(--text)' }}>{formatCurrency(subtotal)}</span>
+            </div>
+
+            {voucher && (
+              <div className="d-flex justify-content-between align-items-start gap-2 small mb-2">
+                <span
+                  className="d-inline-flex align-items-center gap-1"
+                  style={{ color: 'var(--success)' }}
+                >
+                  <Tag size={13} /> {voucher.code}
+                  <button
+                    type="button"
+                    className="btn btn-sm border-0 p-0 ms-1 text-muted"
+                    onClick={() => setVoucher(null)}
+                    aria-label="Bỏ voucher"
+                  >
+                    <X size={13} />
+                  </button>
                 </span>
-                <span>-{totalDiscount.toLocaleString("vi-VN")}đ</span>
+                <span style={{ color: 'var(--success)' }}>
+                  −{formatCurrency(discount)}
+                </span>
               </div>
             )}
-            <hr className="border-secondary" />
-            <div className="d-flex justify-content-between mb-4">
-              <span className="fw-bold fs-5">Thành tiền:</span>
-              <span className="fw-bold fs-4 text-gradient">
-                {total.toLocaleString("vi-VN")}đ
-              </span>
+
+            <hr className="divider my-3" />
+
+            <div className="d-flex justify-content-between align-items-baseline mb-4">
+              <span className="fw-semibold">Thành tiền</span>
+              <span className="fw-bold fs-5">{formatCurrency(total)}</span>
             </div>
 
             <button
-              className="btn btn-gradient w-100 py-3 rounded-pill fs-5"
+              className="btn btn-accent w-100 py-2 d-flex align-items-center justify-content-center gap-2"
               onClick={handlePayment}
-              disabled={loading || checkoutItems.length === 0}
+              disabled={loading || items.length === 0}
             >
-              {loading ? (
-                <span className="spinner-border spinner-border-sm me-2"></span>
-              ) : (
-                "Thanh toán"
-              )}
+              {loading && <Loader2 size={16} className="spin" />}
+              {loading ? 'Đang xử lý…' : 'Thanh toán'}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Voucher Modal */}
-      {voucherModal}
-      {showVoucherModal && (
-        <div
-          className="modal-backdrop fade show"
-          onClick={() => setShowVoucherModal(false)}
-        ></div>
+      {/* Voucher picker */}
+      {voucherModalEventId && (
+        <>
+          <div
+            className="modal-backdrop fade show"
+            onClick={() => setVoucherModalEventId(null)}
+          />
+          <div className="modal d-block" tabIndex={-1} role="dialog">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h3 className="modal-title h6 fw-bold mb-0">Chọn mã giảm giá</h3>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={() => setVoucherModalEventId(null)}
+                    aria-label="Đóng"
+                  />
+                </div>
+                <div className="modal-body">
+                  {voucherLoading ? (
+                    <div className="text-center py-4 text-muted">
+                      <Loader2 size={24} className="spin" />
+                    </div>
+                  ) : modalVouchers.length === 0 ? (
+                    <p className="text-muted small text-center mb-0 py-3">
+                      Sự kiện này chưa có mã giảm giá khả dụng.
+                    </p>
+                  ) : (
+                    <div className="d-flex flex-column gap-2">
+                      {voucher && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost text-start p-3"
+                          onClick={() => {
+                            setVoucher(null);
+                            setVoucherModalEventId(null);
+                          }}
+                        >
+                          Không dùng voucher
+                        </button>
+                      )}
+                      {modalVouchers.map((v) => {
+                        const usable = modalGroup ? isVoucherUsable(v, modalGroup) : false;
+                        return (
+                          <button
+                            key={v.id}
+                            type="button"
+                            className="btn btn-ghost text-start p-3"
+                            style={{ opacity: usable ? 1 : 0.45 }}
+                            disabled={!usable}
+                            onClick={() => {
+                              setVoucher(v);
+                              setVoucherModalEventId(null);
+                            }}
+                          >
+                            <div className="d-flex justify-content-between gap-3">
+                              <div>
+                                <div className="fw-bold small">{v.code}</div>
+                                <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                                  {String(v.discountType).toUpperCase() === 'PERCENTAGE'
+                                    ? `Giảm ${Number(v.amount)}%`
+                                    : `Giảm ${formatCurrency(v.amount)}`}
+                                  {v.maxDiscount != null &&
+                                    String(v.discountType).toUpperCase() === 'PERCENTAGE' &&
+                                    ` (tối đa ${formatCurrency(v.maxDiscount)})`}
+                                </div>
+                                {v.minOrderAmount != null && (
+                                  <div
+                                    style={{ fontSize: '0.75rem' }}
+                                    className={usable ? 'text-muted' : ''}
+                                  >
+                                    <span style={{ color: usable ? undefined : 'var(--danger)' }}>
+                                      Đơn tối thiểu {formatCurrency(v.minOrderAmount)}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                              {v.quantity != null && (
+                                <span
+                                  className="text-muted flex-shrink-0"
+                                  style={{ fontSize: '0.75rem' }}
+                                >
+                                  Còn {v.quantity}
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
