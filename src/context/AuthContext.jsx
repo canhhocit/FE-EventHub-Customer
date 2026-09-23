@@ -11,7 +11,8 @@ import {
   register as registerApi,
   getProfile,
   setUnauthorizedHandler,
-  isTokenUsable,
+  setTokenRefreshedHandler,
+  isTokenRefreshable,
 } from '../utils/api';
 
 const AuthContext = createContext(null);
@@ -21,8 +22,9 @@ export const useAuth = () => useContext(AuthContext);
 const readToken = () => {
   try {
     const token = localStorage.getItem('token');
-    // An expired token is worse than none: the API answers it with a 500.
-    if (token && !isTokenUsable(token)) {
+    // Keep an expired token: the API client trades it in at /auth/refresh on
+    // the first request. Only drop one that isn't a JWT at all.
+    if (token && !isTokenRefreshable(token)) {
       localStorage.removeItem('token');
       return null;
     }
@@ -65,6 +67,16 @@ export const AuthProvider = ({ children }) => {
     });
     return () => setUnauthorizedHandler(null);
   }, [applyToken]);
+
+  // The API client already stored the refreshed token. `token` state only
+  // tells pages whether someone is signed in, so leave it alone — changing it
+  // would refetch everything keyed on it (cart, profile) every hour.
+  useEffect(() => {
+    setTokenRefreshedHandler((newToken) => {
+      tokenRef.current = newToken;
+    });
+    return () => setTokenRefreshedHandler(null);
+  }, []);
 
   // Restore the session on a hard refresh.
   useEffect(() => {
