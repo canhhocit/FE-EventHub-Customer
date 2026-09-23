@@ -93,7 +93,7 @@ const BlogDetail = () => {
   if (loading) {
     return (
       <div className="container py-5 text-center min-vh-50 d-flex flex-column align-items-center justify-content-center">
-        <Loader2 className="animate-spin text-primary mb-3" size={48} />
+        <Loader2 className="animate-spin text-muted mb-3" size={48} />
         <p className="text-muted">Đang tải bài viết...</p>
       </div>
     );
@@ -156,11 +156,11 @@ const BlogDetail = () => {
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 text-muted small border-bottom border-secondary border-opacity-25 pb-3">
               <div className="d-flex align-items-center gap-4">
                 <span className="d-flex align-items-center gap-2">
-                  <Calendar size={16} className="text-primary" />
+                  <Calendar size={16} className="text-muted" />
                   {formatDate(post.publishedAt || post.createdAt)}
                 </span>
                 <span className="d-flex align-items-center gap-2">
-                  <User size={16} className="text-primary" />
+                  <User size={16} className="text-muted" />
                   {post.authorName || "Ban tổ chức"}
                 </span>
               </div>
@@ -171,7 +171,7 @@ const BlogDetail = () => {
                 onClick={handleShare}
                 title="Chia sẻ bài viết"
               >
-                {copied ? <Check size={14} className="text-success" /> : <Share2 size={14} />}
+                {copied ? <Check size={14} className="text-muted" /> : <Share2 size={14} />}
                 <span>{copied ? "Đã sao chép link" : "Chia sẻ"}</span>
               </button>
             </div>
@@ -247,11 +247,11 @@ const BlogDetail = () => {
                     </h4>
                     <div className="d-flex align-items-center gap-3 text-muted small mb-2">
                       <span className="d-flex align-items-center gap-1">
-                        <Calendar size={14} className="text-primary" />
+                        <Calendar size={14} className="text-muted" />
                         {new Date(eventsData[activeEventIndex].startTime).toLocaleDateString('vi-VN')}
                       </span>
                       <span className="d-flex align-items-center gap-1">
-                        <MapPin size={14} className="text-primary" />
+                        <MapPin size={14} className="text-muted" />
                         {eventsData[activeEventIndex].province || "Toàn quốc"}
                       </span>
                     </div>
@@ -276,20 +276,20 @@ const BlogDetail = () => {
 
       <style dangerouslySetInnerHTML={{ __html: `
         .blog-article-content p {
-          color: #cbd5e1;
+          color: var(--text-dim);
           margin-bottom: 1.5rem;
         }
         .blog-article-content h2, 
         .blog-article-content h3, 
         .blog-article-content h4 {
-          color: #f8fafc;
+          color: var(--text);
           font-weight: 700;
           margin-top: 2rem;
           margin-bottom: 1rem;
         }
         .blog-article-content ul, 
         .blog-article-content ol {
-          color: #cbd5e1;
+          color: var(--text-dim);
           margin-bottom: 1.5rem;
           padding-left: 1.5rem;
         }
@@ -297,10 +297,10 @@ const BlogDetail = () => {
           margin-bottom: 0.5rem;
         }
         .blog-article-content strong {
-          color: #ffffff;
+          color: var(--text);
         }
         .hover-primary:hover {
-          color: var(--primary-color) !important;
+          color: var(--accent) !important;
         }
       `}} />
     </div>

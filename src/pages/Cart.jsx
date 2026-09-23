@@ -122,7 +122,7 @@ const Cart = () => {
     <div className="container py-4">
       <div className="d-flex align-items-center justify-content-between mb-4">
         <h1 className="h4 fw-bold mb-0 d-flex align-items-center gap-2">
-          <ShoppingCart size={22} className="text-primary" /> Giỏ hàng
+          <ShoppingCart size={22} className="text-muted" /> Giỏ hàng
         </h1>
         <button className="btn btn-ghost btn-sm px-3 py-2" onClick={handleClear}>
           Xóa tất cả

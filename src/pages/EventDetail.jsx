@@ -227,14 +227,14 @@ const EventDetail = () => {
 
               <div className="row g-3 mb-4">
                 <div className="col-sm-6 d-flex align-items-start gap-2">
-                  <Calendar size={17} className="text-primary flex-shrink-0 mt-1" />
+                  <Calendar size={17} className="text-muted flex-shrink-0 mt-1" />
                   <div>
                     <div className="small text-muted">Thời gian diễn ra</div>
                     <div className="small">{formatDateTime(event.startTime)}</div>
                   </div>
                 </div>
                 <div className="col-sm-6 d-flex align-items-start gap-2">
-                  <MapPin size={17} className="text-primary flex-shrink-0 mt-1" />
+                  <MapPin size={17} className="text-muted flex-shrink-0 mt-1" />
                   <div>
                     <div className="small text-muted">Địa điểm</div>
                     <div className="small">{getEventLocation(event)}</div>
@@ -242,7 +242,7 @@ const EventDetail = () => {
                 </div>
                 {event.saleEndDate && (
                   <div className="col-sm-6 d-flex align-items-start gap-2">
-                    <Clock size={17} className="text-primary flex-shrink-0 mt-1" />
+                    <Clock size={17} className="text-muted flex-shrink-0 mt-1" />
                     <div>
                       <div className="small text-muted">Kết thúc bán vé</div>
                       <div className="small">{formatDateTime(event.saleEndDate)}</div>
@@ -251,7 +251,7 @@ const EventDetail = () => {
                 )}
                 {event.organizer?.fullName && (
                   <div className="col-sm-6 d-flex align-items-start gap-2">
-                    <Info size={17} className="text-primary flex-shrink-0 mt-1" />
+                    <Info size={17} className="text-muted flex-shrink-0 mt-1" />
                     <div>
                       <div className="small text-muted">Ban tổ chức</div>
                       <div className="small">{event.organizer.fullName}</div>
@@ -278,7 +278,7 @@ const EventDetail = () => {
         <div className="col-lg-4">
           <div className="panel p-4 sticky-top" style={{ top: 'calc(var(--nav-h) + 16px)' }}>
             <h2 className="section-title h6 d-flex align-items-center gap-2 mb-3">
-              <Ticket size={18} className="text-primary" /> Chọn vé
+              <Ticket size={18} className="text-muted" /> Chọn vé
             </h2>
 
             {!sale.canBuy && sale.reason && (

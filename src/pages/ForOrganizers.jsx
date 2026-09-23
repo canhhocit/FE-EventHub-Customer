@@ -107,7 +107,7 @@ const ForOrganizers = () => (
                     border: '1px solid var(--border)',
                   }}
                 >
-                  <Icon size={18} className="text-primary flex-shrink-0 mt-1" />
+                  <Icon size={18} className="text-muted flex-shrink-0 mt-1" />
                   <div>
                     <div className="fw-semibold small">{title}</div>
                     <div className="text-muted" style={{ fontSize: '0.8125rem' }}>
@@ -139,7 +139,7 @@ const ForOrganizers = () => (
                     border: '1px solid var(--accent-line)',
                   }}
                 >
-                  <Icon size={16} className="text-primary" />
+                  <Icon size={16} className="text-muted" />
                 </span>
                 <span className="section-eyebrow">Bước {index + 1}</span>
               </div>

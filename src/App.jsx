@@ -1,8 +1,9 @@
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
-import { Ticket } from 'lucide-react';
 
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import QuickContact from './components/QuickContact';
 import RequireAuth from './components/RequireAuth';
 import { ToastProvider } from './context/ToastContext';
 
@@ -30,14 +31,14 @@ import ForOrganizers from './pages/ForOrganizers';
 
 import './index.css';
 
-/** The home page owns a full-bleed hero, so only the other pages get padding. */
+/** The home page owns a full-bleed hero, so only the other pages get extra padding. */
 const PageArea = ({ children }) => {
   const { pathname } = useLocation();
   const isFullBleed = pathname === '/';
   return (
     <main
       className="flex-grow-1"
-      style={{ paddingTop: isFullBleed ? 'var(--nav-h)' : 'calc(var(--nav-h) + 8px)' }}
+      style={{ paddingTop: isFullBleed ? 'var(--nav-h)' : 'calc(var(--nav-h) + 16px)' }}
     >
       {children}
     </main>
@@ -51,64 +52,6 @@ const ScrollToTop = () => {
   }, [pathname]);
   return null;
 };
-
-const FOOTER_LINKS = [
-  { to: '/', label: 'Trang chủ' },
-  { to: '/blog', label: 'Tin tức' },
-  { to: '/guide', label: 'Hướng dẫn mua vé' },
-  { to: '/security', label: 'An toàn & Bảo mật' },
-  { to: '/for-organizers', label: 'Dành cho ban tổ chức' },
-  { to: '/help', label: 'Trợ giúp' },
-];
-
-const Footer = () => (
-  <footer
-    className="mt-auto border-top"
-    style={{ borderColor: 'var(--border)', background: 'var(--bg-elevated)' }}
-  >
-    <div className="container py-4">
-      <div className="row gy-3 align-items-center">
-        <div className="col-md-5">
-          <div className="d-flex align-items-center gap-2 mb-1">
-            <span
-              style={{
-                width: 24,
-                height: 24,
-                background: 'var(--accent)',
-                borderRadius: 6,
-                display: 'grid',
-                placeItems: 'center',
-              }}
-            >
-              <Ticket size={14} color="#fff" />
-            </span>
-            <span className="fw-bold">EventTicket</span>
-          </div>
-          <p className="mb-0 small text-muted">
-            Nền tảng đặt vé sự kiện và tin tức trực tuyến.
-          </p>
-        </div>
-        <div className="col-md-7">
-          <ul className="list-unstyled d-flex flex-wrap justify-content-md-end gap-3 mb-0 small">
-            {FOOTER_LINKS.map(({ to, label }) => (
-              <li key={to}>
-                <Link to={to} className="text-muted text-decoration-none hover-primary">
-                  {label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-      <div
-        className="pt-3 mt-3 border-top small text-muted"
-        style={{ borderColor: 'var(--border)' }}
-      >
-        © {new Date().getFullYear()} FiveTickets Team.
-      </div>
-    </div>
-  </footer>
-);
 
 function App() {
   return (
@@ -173,6 +116,7 @@ function App() {
             </Routes>
           </PageArea>
           <Footer />
+          <QuickContact />
         </div>
       </ToastProvider>
     </Router>

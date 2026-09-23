@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { Calendar, User } from 'lucide-react';
 import { getImageUrl, handleImageError, formatDate } from '../utils/constants';
 
 /**
@@ -26,15 +25,9 @@ const BlogCard = ({ blog }) => {
       </div>
 
       <div className="tile-body">
-        <div className="tile-meta" style={{ gap: 14 }}>
-          <span className="d-inline-flex align-items-center gap-1">
-            <Calendar size={13} />
-            {formatDate(blog.publishedAt || blog.createdAt)}
-          </span>
-          <span className="d-inline-flex align-items-center gap-1 text-truncate">
-            <User size={13} />
-            {blog.authorName || 'Ban tổ chức'}
-          </span>
+        <div className="tile-meta" style={{ gap: 12 }}>
+          <span>{formatDate(blog.publishedAt || blog.createdAt)}</span>
+          <span className="text-truncate">{blog.authorName || 'Ban tổ chức'}</span>
         </div>
 
         <h3 className="tile-title clamp-2">

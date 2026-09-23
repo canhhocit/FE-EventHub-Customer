@@ -33,9 +33,9 @@ const FALLBACK_IMAGE =
   "data:image/svg+xml;charset=utf-8," +
   encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400">
-      <rect width="640" height="400" fill="#1b2433"/>
-      <path d="M0 400 L200 240 L330 330 L470 200 L640 320 L640 400Z" fill="#232e40"/>
-      <circle cx="500" cy="96" r="34" fill="#232e40"/>
+      <rect width="640" height="400" fill="#eef0f4"/>
+      <path d="M0 400 L200 240 L330 330 L470 200 L640 320 L640 400Z" fill="#dfe3ea"/>
+      <circle cx="500" cy="96" r="34" fill="#dfe3ea"/>
     </svg>`,
   );
 

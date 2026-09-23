@@ -7,25 +7,25 @@ const GuidePage = () => {
       id: 1,
       title: "Bước 1: Tìm kiếm & Lựa chọn sự kiện",
       desc: "Dạo quanh trang chủ, sử dụng thanh tìm kiếm theo tên hoặc bộ lọc theo danh mục (Âm nhạc, Thể thao, Hội thảo...) và tỉnh/thành phố để tìm sự kiện bạn yêu thích.",
-      icon: <Search size={28} className="text-primary" />
+      icon: <Search size={28} className="text-muted" />
     },
     {
       id: 2,
       title: "Bước 2: Chọn hạng vé & Số lượng",
       desc: "Xem chi tiết thông tin, quyền lợi từng hạng vé (Early Bird, Standard, VIP). Chọn số lượng vé mong muốn và thêm vào giỏ hàng.",
-      icon: <ShoppingCart size={28} className="text-primary" />
+      icon: <ShoppingCart size={28} className="text-muted" />
     },
     {
       id: 3,
       title: "Bước 3: Thanh toán an toàn & Nhập Voucher",
       desc: "Áp dụng mã giảm giá (nếu có), lựa chọn phương thức thanh toán chuyển khoản quét mã QR hoặc thẻ ngân hàng và hoàn tất đặt hàng.",
-      icon: <CreditCard size={28} className="text-primary" />
+      icon: <CreditCard size={28} className="text-muted" />
     },
     {
       id: 4,
       title: "Bước 4: Nhận vé điện tử (Mã QR E-Ticket)",
       desc: "Sau khi thanh toán thành công, vé điện tử có mã QR duy nhất sẽ hiển thị ngay tại mục 'Vé của tôi' trên website và được gửi xác nhận qua Email.",
-      icon: <QrCode size={28} className="text-primary" />
+      icon: <QrCode size={28} className="text-muted" />
     }
   ];
 
@@ -85,25 +85,25 @@ const GuidePage = () => {
             </p>
             <div className="d-flex flex-column gap-3">
               <div className="d-flex gap-3 align-items-center p-3 rounded-3 bg-dark bg-opacity-40 border border-secondary border-opacity-25">
-                <CheckCircle size={20} className="text-success flex-shrink-0" />
+                <CheckCircle size={20} className="text-muted flex-shrink-0" />
                 <span className="small text-light">
                   <b>Mở sẵn mã QR:</b> Vào mục <b>"Vé của tôi"</b> trên website và chuẩn bị sẵn mã QR trước khi đến lượt.
                 </span>
               </div>
               <div className="d-flex gap-3 align-items-center p-3 rounded-3 bg-dark bg-opacity-40 border border-secondary border-opacity-25">
-                <CheckCircle size={20} className="text-success flex-shrink-0" />
+                <CheckCircle size={20} className="text-muted flex-shrink-0" />
                 <span className="small text-light">
                   <b>Độ sáng màn hình:</b> Tăng tối đa độ sáng điện thoại để máy quét quang học nhận diện mã QR tức thì.
                 </span>
               </div>
               <div className="d-flex gap-3 align-items-center p-3 rounded-3 bg-dark bg-opacity-40 border border-secondary border-opacity-25">
-                <CheckCircle size={20} className="text-success flex-shrink-0" />
+                <CheckCircle size={20} className="text-muted flex-shrink-0" />
                 <span className="small text-light">
                   <b>Nhận vòng tay/thẻ sự kiện:</b> Nhân viên soát vé sẽ quét mã và phát vòng tay check-in hợp lệ.
                 </span>
               </div>
               <div className="d-flex gap-3 align-items-center p-3 rounded-3 bg-warning bg-opacity-10 border border-warning border-opacity-25">
-                <AlertTriangle size={20} className="text-warning flex-shrink-0" />
+                <AlertTriangle size={20} className="text-muted flex-shrink-0" />
                 <span className="small text-warning">
                   <b>Lưu ý quan trọng:</b> Mỗi mã QR chỉ có giá trị cho 01 lượt vào cổng duy nhất.
                 </span>
@@ -126,7 +126,7 @@ const GuidePage = () => {
             </div>
 
             <div className="glass-card p-4 border border-secondary border-opacity-25">
-              <h6 className="fw-bold text-white mb-2">🛡️ Mẹo bảo vệ vé</h6>
+              <h6 className="fw-bold text-white mb-2">Mẹo bảo vệ vé</h6>
               <p className="small text-muted mb-0">
                 Tuyệt đối không gửi ảnh mã QR vé cho người lạ trên mạng xã hội trước khi sự kiện diễn ra.
               </p>

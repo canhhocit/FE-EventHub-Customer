@@ -1,38 +1,55 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
-  Search,
-  MapPin,
   SlidersHorizontal,
-  X,
-  ArrowRight,
-  CalendarX2,
-  AlertCircle,
   ChevronLeft,
   ChevronRight,
+  RotateCcw,
 } from 'lucide-react';
 import { getCategories, getEvents, getBlogPosts } from '../utils/api';
-import { VIETNAM_PROVINCES } from '../utils/constants';
 
 import EventCard from '../components/EventCard';
 import BlogCard from '../components/BlogCard';
 import NewsSlider, { buildSlides } from '../components/NewsSlider';
 
-const PAGE_SIZE = 12;
-const EMPTY_FILTERS = { keyword: '', categoryId: '', province: '', minPrice: '' };
+// 16 vé mỗi trang, 4 vé mỗi dòng
+const PAGE_SIZE = 16;
+
+const EMPTY_FILTERS = {
+  keyword: '',
+  categoryId: '',
+  province: '',
+  minPrice: '',
+  maxPrice: '',
+};
+
+/* Khoảng giá dựng sẵn — người mua nghĩ theo mức tiền, không theo ô nhập số. */
+const PRICE_RANGES = [
+  { key: 'u200', label: 'Dưới 200.000đ', minPrice: '', maxPrice: '200000' },
+  { key: '200-500', label: '200.000đ - 500.000đ', minPrice: '200000', maxPrice: '500000' },
+  { key: '500-1m', label: '500.000đ - 1 triệu', minPrice: '500000', maxPrice: '1000000' },
+  { key: 'o1m', label: 'Trên 1 triệu', minPrice: '1000000', maxPrice: '' },
+];
+
+const matchRange = ({ minPrice, maxPrice }) =>
+  PRICE_RANGES.find((r) => r.minPrice === minPrice && r.maxPrice === maxPrice) || null;
 
 const EventSkeleton = () => (
   <div className="tile">
     <div className="skeleton" style={{ aspectRatio: '16 / 10', borderRadius: 0 }} />
     <div className="tile-body">
-      <div className="skeleton" style={{ height: 15, width: '85%' }} />
-      <div className="skeleton" style={{ height: 12, width: '60%' }} />
-      <div className="skeleton" style={{ height: 12, width: '70%' }} />
+      <div className="skeleton" style={{ height: 16, width: '85%' }} />
+      <div className="skeleton" style={{ height: 13, width: '60%' }} />
+      <div className="skeleton" style={{ height: 13, width: '75%' }} />
     </div>
   </div>
 );
 
 const Home = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlKeyword = searchParams.get('keyword') || '';
+  const urlProvince = searchParams.get('province') || '';
+
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -44,55 +61,70 @@ const Home = () => {
   const [featuredBlogs, setFeaturedBlogs] = useState([]);
   const [slides, setSlides] = useState([]);
 
-  // `filters` is what the user typed; `applied` is what we actually query with,
-  // so typing in the keyword box doesn't fire a request per keystroke.
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
-  const [applied, setApplied] = useState(EMPTY_FILTERS);
+  // Bộ lọc giá nằm trong popover nhỏ, thay cho sidebar cũ
+  const [priceOpen, setPriceOpen] = useState(false);
+  const priceRef = useRef(null);
 
-  const setFilter = (key, value) =>
-    setFilters((prev) => ({ ...prev, [key]: value }));
+  /* Danh mục và khoảng giá là các lựa chọn rời rạc nên áp dụng ngay, không
+     cần debounce như ô nhập tay trước đây. */
+  const [applied, setApplied] = useState({
+    ...EMPTY_FILTERS,
+    keyword: urlKeyword,
+    province: urlProvince,
+  });
 
-  // Debounce the free-text/number inputs, apply selects immediately.
+  /* Navbar viết từ khoá và địa điểm vào query string — đó là nguồn dữ liệu duy
+     nhất cho hai bộ lọc này. Đọc trạng thái qua ref để effect không phải phụ
+     thuộc vào chính nó. */
+  const appliedRef = useRef(applied);
+  appliedRef.current = applied;
+
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setApplied((prev) => {
-        const next = { ...filters };
-        const changed = Object.keys(next).some((k) => next[k] !== prev[k]);
-        return changed ? next : prev;
-      });
-    }, 350);
-    return () => clearTimeout(timer);
-  }, [filters]);
-
-  // Any filter change goes back to page 1.
-  useEffect(() => {
+    const current = appliedRef.current;
+    if (current.keyword === urlKeyword && current.province === urlProvince) return;
+    setApplied((prev) => ({ ...prev, keyword: urlKeyword, province: urlProvince }));
     setPage(1);
-  }, [applied]);
+  }, [urlKeyword, urlProvince]);
 
-  const fetchEvents = useCallback(async (signal) => {
-    setLoading(true);
-    setError('');
-    try {
-      const data = await getEvents(
-        { page, size: PAGE_SIZE, ...applied },
-        { signal },
-      );
-      if (data?.code === 1000 && data.result) {
-        setEvents(data.result.content || []);
-        setTotalPages(Math.max(data.result.totalPages || 1, 1));
-        setTotalElements(data.result.totalElements ?? 0);
-      } else {
+  // Đóng popover giá khi bấm ra ngoài
+  useEffect(() => {
+    if (!priceOpen) return undefined;
+    const onDocClick = (e) => {
+      if (priceRef.current && !priceRef.current.contains(e.target)) setPriceOpen(false);
+    };
+    const onEsc = (e) => e.key === 'Escape' && setPriceOpen(false);
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [priceOpen]);
+
+  const fetchEvents = useCallback(
+    async (signal) => {
+      setLoading(true);
+      setError('');
+      try {
+        const data = await getEvents({ page, size: PAGE_SIZE, ...applied }, { signal });
+        if (data?.code === 1000 && data.result) {
+          setEvents(data.result.content || []);
+          setTotalPages(Math.max(data.result.totalPages || 1, 1));
+          setTotalElements(data.result.totalElements ?? 0);
+        } else {
+          setEvents([]);
+          setError(data?.message || 'Không tải được danh sách sự kiện.');
+        }
+      } catch (err) {
+        if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
         setEvents([]);
-        setError(data?.message || 'Không tải được danh sách sự kiện.');
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
-      setEvents([]);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, applied]);
+    },
+    [page, applied],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -106,9 +138,6 @@ const Home = () => {
       .catch(() => setCategories([]));
   }, []);
 
-  // News strip + "latest news" section. Sourced from published posts; when
-  // there is no news yet we fall back to the newest events. If neither exists
-  // buildSlides returns [] and the strip renders nothing — no placeholder.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -144,210 +173,258 @@ const Home = () => {
     () => Object.values(applied).filter((v) => v !== '').length,
     [applied],
   );
+  const activeRange = matchRange(applied);
+  const priceFilterOn = applied.minPrice !== '' || applied.maxPrice !== '';
+
+  const selectPriceRange = (range) => {
+    const patch = range
+      ? { minPrice: range.minPrice, maxPrice: range.maxPrice }
+      : { minPrice: '', maxPrice: '' };
+    setApplied((p) => ({ ...p, ...patch }));
+    setPage(1);
+    setPriceOpen(false);
+  };
 
   const clearFilters = () => {
-    setFilters(EMPTY_FILTERS);
     setApplied(EMPTY_FILTERS);
+    setPage(1);
+    setSearchParams({});
+  };
+
+  const selectCategory = (categoryId) => {
+    setApplied((p) => ({ ...p, categoryId }));
+    setPage(1);
   };
 
   const goToPage = (next) => {
     setPage(next);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const el = document.getElementById('events-section');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const renderPaginationButtons = () => {
+    const pages = [];
+    const maxVisible = 5;
+    let start = Math.max(1, page - Math.floor(maxVisible / 2));
+    const end = Math.min(totalPages, start + maxVisible - 1);
+
+    if (end - start + 1 < maxVisible) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+
+    return (
+      <div className="pagination-clean">
+        <button
+          type="button"
+          className="page-btn"
+          disabled={page <= 1}
+          onClick={() => goToPage(page - 1)}
+          aria-label="Trang trước"
+        >
+          <ChevronLeft size={16} />
+          <span className="d-none d-sm-inline ms-1">Trước</span>
+        </button>
+
+        {start > 1 && (
+          <>
+            <button
+              type="button"
+              className={`page-btn ${page === 1 ? 'is-active' : ''}`}
+              onClick={() => goToPage(1)}
+            >
+              1
+            </button>
+            {start > 2 && <span className="text-muted px-1">…</span>}
+          </>
+        )}
+
+        {pages.map((p) => (
+          <button
+            key={p}
+            type="button"
+            className={`page-btn ${p === page ? 'is-active' : ''}`}
+            onClick={() => goToPage(p)}
+          >
+            {p}
+          </button>
+        ))}
+
+        {end < totalPages && (
+          <>
+            {end < totalPages - 1 && <span className="text-muted px-1">…</span>}
+            <button
+              type="button"
+              className={`page-btn ${page === totalPages ? 'is-active' : ''}`}
+              onClick={() => goToPage(totalPages)}
+            >
+              {totalPages}
+            </button>
+          </>
+        )}
+
+        <button
+          type="button"
+          className="page-btn"
+          disabled={page >= totalPages}
+          onClick={() => goToPage(page + 1)}
+          aria-label="Trang sau"
+        >
+          <span className="d-none d-sm-inline me-1">Sau</span>
+          <ChevronRight size={16} />
+        </button>
+      </div>
+    );
   };
 
   return (
     <>
+      {/* 1. Banner tin tức cao gần hết màn hình */}
       <NewsSlider slides={slides} />
 
-      <div className="container py-5">
-        {/* ---- Search & filters, centred ---- */}
-        <section className="mx-auto" style={{ maxWidth: 940 }}>
-          <div className="text-center mb-4">
-            <h1 className="fw-bold mb-2" style={{ fontSize: 'clamp(1.75rem, 4vw, 2.5rem)' }}>
-              Khám phá sự kiện
-            </h1>
-            <p className="text-muted mb-0">
-              Tìm concert, hội thảo, workshop và đặt vé chỉ trong vài bước.
-            </p>
-          </div>
+      <div className="container py-4 py-lg-5" id="events-section">
+        {/* 2. Tiêu đề + thanh chọn loại vé (thay cho sidebar bên trái) */}
+        <h1 className="section-title mb-3">Sự kiện</h1>
 
-          <div className="panel p-3 p-md-4">
-            <div className="field mb-3">
-              <Search size={17} />
-              <input
-                type="text"
-                className="form-control form-control-lg"
-                style={{ fontSize: '1rem' }}
-                placeholder="Tìm theo tên sự kiện…"
-                value={filters.keyword}
-                onChange={(e) => setFilter('keyword', e.target.value)}
-                aria-label="Từ khóa tìm kiếm"
-              />
-            </div>
+        <div className="cat-tabs mb-3">
+          <button
+            type="button"
+            className={`cat-tab${applied.categoryId === '' ? ' is-active' : ''}`}
+            onClick={() => selectCategory('')}
+          >
+            Tất cả
+          </button>
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={`cat-tab${String(applied.categoryId) === String(c.id) ? ' is-active' : ''}`}
+              onClick={() => selectCategory(String(c.id))}
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
 
-            <div className="row g-2 g-md-3">
-              <div className="col-12 col-sm-6 col-lg-4">
-                <label className="form-label d-flex align-items-center gap-1">
-                  <SlidersHorizontal size={13} /> Danh mục
-                </label>
-                <select
-                  className="form-select"
-                  value={filters.categoryId}
-                  onChange={(e) => {
-                    setFilter('categoryId', e.target.value);
-                    setApplied((p) => ({ ...p, categoryId: e.target.value }));
-                  }}
-                >
-                  <option value="">Tất cả danh mục</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
+        {/* 3. Dòng công cụ: số kết quả + lọc giá */}
+        <div className="filter-bar justify-content-between mb-4">
+          <p className="text-muted small mb-0">
+            {loading
+              ? 'Đang tải danh sách vé…'
+              : `${totalElements} sự kiện · trang ${page}/${totalPages}`}
+          </p>
+
+          <div className="filter-bar">
+            <div className="position-relative" ref={priceRef}>
+              <button
+                type="button"
+                className={`filter-chip${priceFilterOn ? ' is-on' : ''}`}
+                onClick={() => setPriceOpen((v) => !v)}
+                aria-expanded={priceOpen}
+              >
+                <SlidersHorizontal size={15} />
+                <span>{activeRange ? activeRange.label : 'Khoảng giá'}</span>
+              </button>
+
+              {priceOpen && (
+                <div className="filter-pop" role="listbox">
+                  <button
+                    type="button"
+                    className={`filter-pop-option${priceFilterOn ? '' : ' is-active'}`}
+                    onClick={() => selectPriceRange(null)}
+                  >
+                    Tất cả mức giá
+                  </button>
+                  {PRICE_RANGES.map((range) => (
+                    <button
+                      key={range.key}
+                      type="button"
+                      className={`filter-pop-option${
+                        activeRange?.key === range.key ? ' is-active' : ''
+                      }`}
+                      onClick={() => selectPriceRange(range)}
+                    >
+                      {range.label}
+                    </button>
                   ))}
-                </select>
-              </div>
-
-              <div className="col-12 col-sm-6 col-lg-4">
-                <label className="form-label d-flex align-items-center gap-1">
-                  <MapPin size={13} /> Tỉnh / Thành phố
-                </label>
-                <select
-                  className="form-select"
-                  value={filters.province}
-                  onChange={(e) => {
-                    setFilter('province', e.target.value);
-                    setApplied((p) => ({ ...p, province: e.target.value }));
-                  }}
-                >
-                  <option value="">Toàn quốc</option>
-                  {VIETNAM_PROVINCES.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="col-12 col-lg-4">
-                <label className="form-label">Giá vé từ (VNĐ)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="10000"
-                  className="form-control"
-                  placeholder="0"
-                  value={filters.minPrice}
-                  onChange={(e) => setFilter('minPrice', e.target.value)}
-                />
-              </div>
+                </div>
+              )}
             </div>
 
             {activeFilterCount > 0 && (
-              <div className="d-flex align-items-center justify-content-between gap-3 mt-3 pt-3 border-top">
-                <span className="small text-muted">
-                  {loading
-                    ? 'Đang lọc…'
-                    : `${totalElements} sự kiện khớp với bộ lọc`}
-                </span>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-1 px-3"
-                  onClick={clearFilters}
-                >
-                  <X size={14} /> Xóa bộ lọc
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* ---- Results ---- */}
-        <section className="mt-5">
-          <div className="d-flex align-items-baseline justify-content-between mb-3">
-            <h2 className="section-title">
-              {activeFilterCount > 0 ? 'Kết quả tìm kiếm' : 'Sự kiện đang diễn ra'}
-            </h2>
-            {!loading && totalElements > 0 && (
-              <span className="small text-muted">{totalElements} sự kiện</span>
-            )}
-          </div>
-
-          {error ? (
-            <div className="panel p-5 text-center">
-              <AlertCircle size={34} className="mb-3" style={{ color: 'var(--danger)' }} />
-              <h3 className="h6 fw-bold mb-2">Không tải được sự kiện</h3>
-              <p className="text-muted small mb-4">{error}</p>
-              <button className="btn btn-accent px-4 py-2" onClick={() => fetchEvents()}>
-                Thử lại
+              <button type="button" className="filter-chip" onClick={clearFilters}>
+                <RotateCcw size={15} />
+                <span>Xóa bộ lọc ({activeFilterCount})</span>
               </button>
-            </div>
-          ) : loading ? (
-            <div className="row g-3 row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xl-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div className="col" key={i}>
-                  <EventSkeleton />
-                </div>
-              ))}
-            </div>
-          ) : events.length === 0 ? (
-            <div className="panel p-5 text-center">
-              <CalendarX2 size={34} className="text-muted mb-3" />
-              <h3 className="h6 fw-bold mb-2">Không tìm thấy sự kiện phù hợp</h3>
-              <p className="text-muted small mb-4">
-                Thử bỏ bớt bộ lọc hoặc tìm với từ khóa khác.
-              </p>
-              {activeFilterCount > 0 && (
-                <button className="btn btn-ghost px-4 py-2" onClick={clearFilters}>
-                  Xóa bộ lọc
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="row g-3 row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xl-4">
+            )}
+          </div>
+        </div>
+
+        {/* 4. Lưới vé: 4 vé mỗi dòng, 16 vé mỗi trang */}
+        {error ? (
+          <div className="panel p-5 text-center">
+            <h3 className="h6 fw-bold mb-2">Không tải được sự kiện</h3>
+            <p className="text-muted small mb-3">{error}</p>
+            <button className="btn btn-accent btn-sm px-4" onClick={() => fetchEvents()}>
+              Thử lại
+            </button>
+          </div>
+        ) : loading ? (
+          <div className="row g-4 row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xl-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div className="col" key={i}>
+                <EventSkeleton />
+              </div>
+            ))}
+          </div>
+        ) : events.length === 0 ? (
+          <div className="panel p-5 text-center">
+            <h3 className="h6 fw-bold mb-2">Không tìm thấy sự kiện phù hợp</h3>
+            <p className="text-muted small mb-3">
+              Thử thay đổi từ khóa hoặc loại bỏ bớt các bộ lọc để có thêm kết quả.
+            </p>
+            {activeFilterCount > 0 && (
+              <button className="btn btn-ghost btn-sm px-3" onClick={clearFilters}>
+                Xóa tất cả bộ lọc
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="row g-4 row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xl-4">
               {events.map((event) => (
                 <div className="col" key={event.id}>
                   <EventCard event={event} />
                 </div>
               ))}
             </div>
-          )}
 
-          {!loading && !error && totalPages > 1 && (
-            <nav className="d-flex justify-content-center align-items-center gap-2 mt-4">
-              <button
-                className="btn btn-ghost btn-sm px-3 py-2 d-inline-flex align-items-center gap-1"
-                disabled={page <= 1}
-                onClick={() => goToPage(page - 1)}
-              >
-                <ChevronLeft size={15} /> Trước
-              </button>
-              <span className="small text-muted px-2">
-                Trang <strong style={{ color: 'var(--text)' }}>{page}</strong> / {totalPages}
-              </span>
-              <button
-                className="btn btn-ghost btn-sm px-3 py-2 d-inline-flex align-items-center gap-1"
-                disabled={page >= totalPages}
-                onClick={() => goToPage(page + 1)}
-              >
-                Sau <ChevronRight size={15} />
-              </button>
-            </nav>
-          )}
-        </section>
+            {totalPages > 1 && renderPaginationButtons()}
+          </>
+        )}
 
-        {/* ---- Latest news ---- */}
+        {/* 5. Tin tức & cẩm nang */}
         {featuredBlogs.length > 0 && (
-          <section className="mt-5 pt-5 border-top">
-            <div className="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-3">
-              <h2 className="section-title">Tin tức &amp; cẩm nang</h2>
-              <Link
-                to="/blog"
-                className="small fw-semibold d-inline-flex align-items-center gap-1"
-              >
-                Xem tất cả <ArrowRight size={14} />
+          <section className="mt-5 pt-5 border-top" style={{ borderColor: 'var(--border)' }}>
+            <div className="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-4">
+              <div>
+                <h2 className="section-title">Tin tức &amp; Cẩm nang sự kiện</h2>
+                <p className="text-muted small mb-0">
+                  Cập nhật tin tức biểu diễn và hướng dẫn mua vé
+                </p>
+              </div>
+              <Link to="/blog" className="small fw-semibold hover-primary">
+                Xem tất cả tin
               </Link>
             </div>
-            <div className="row g-3 row-cols-1 row-cols-sm-2 row-cols-lg-3">
+            <div className="row g-4 row-cols-1 row-cols-sm-2 row-cols-lg-3">
               {featuredBlogs.slice(0, 3).map((blog) => (
                 <div className="col" key={blog.id}>
                   <BlogCard blog={blog} />

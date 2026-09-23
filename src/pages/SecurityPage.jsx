@@ -25,7 +25,7 @@ const SecurityPage = () => {
           <ChevronLeft size={16} /> Quay lại trung tâm trợ giúp
         </Link>
         <h1 className="display-5 fw-bold text-white mb-3">
-          Khiên bảo vệ cho <span className="text-gradient">chiếc vé của bạn 🛡️</span>
+          Khiên bảo vệ cho <span className="text-gradient">chiếc vé của bạn</span>
         </h1>
         <p className="text-muted">
           Những quy tắc vàng giúp bạn bảo vệ tài khoản, sở hữu vé an toàn và phòng ngừa lừa đảo vé giả trên không gian mạng.
@@ -38,7 +38,7 @@ const SecurityPage = () => {
             {/* Rule 1 */}
             <div>
               <h3 className="fw-bold text-white mb-3 d-flex align-items-center gap-2">
-                <ShieldAlert className="text-danger" size={24} /> 1. Tuyệt đối không chia sẻ hình ảnh mã QR
+                <ShieldAlert className="text-muted" size={24} /> 1. Tuyệt đối không chia sẻ hình ảnh mã QR
               </h3>
               <p className="text-muted lh-base">
                 Mã QR trên vé điện tử là thông tin duy nhất xác thực quyền vào cổng của bạn. Khi bạn đăng ảnh khoe vé lên Facebook, Instagram hay TikTok mà để lộ mã QR, kẻ gian hoàn toàn có thể quét lại và check-in chiếm quyền vào cổng trước bạn.
@@ -53,7 +53,7 @@ const SecurityPage = () => {
             {/* Rule 2 */}
             <div>
               <h3 className="fw-bold text-white mb-3 d-flex align-items-center gap-2">
-                <AlertTriangle className="text-warning" size={24} /> 2. Cảnh giác với lừa đảo vé chuyển nhượng (Resale)
+                <AlertTriangle className="text-muted" size={24} /> 2. Cảnh giác với lừa đảo vé chuyển nhượng (Resale)
               </h3>
               <p className="text-muted lh-base">
                 Các sự kiện cháy vé thường xuất hiện đối tượng rao bán lại vé với chiêu trò lừa đảo tinh vi. Hãy luôn cẩn trọng trước các dấu hiệu sau:
@@ -83,7 +83,7 @@ const SecurityPage = () => {
             {/* Rule 3 */}
             <div>
               <h3 className="fw-bold text-white mb-3 d-flex align-items-center gap-2">
-                <Lock className="text-success" size={24} /> 3. Bảo mật mật khẩu & tài khoản
+                <Lock className="text-muted" size={24} /> 3. Bảo mật mật khẩu & tài khoản
               </h3>
               <p className="text-muted lh-base">
                 Sử dụng mật khẩu mạnh kết hợp chữ hoa, chữ thường, chữ số và ký tự đặc biệt. Định kỳ cập nhật mật khẩu của bạn tại trang Thông tin cá nhân và tuyệt đối không dùng chung một mật khẩu cho nhiều dịch vụ.

@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin } from 'lucide-react';
 import {
   getImageUrl,
   handleImageError,
@@ -38,11 +37,9 @@ const EventCard = ({ event }) => {
         </h3>
 
         <div className="tile-meta">
-          <Calendar size={14} className="flex-shrink-0" />
           <span>{formatDate(event.startTime)}</span>
         </div>
         <div className="tile-meta">
-          <MapPin size={14} className="flex-shrink-0" />
           <span>{getEventLocation(event)}</span>
         </div>
 

@@ -38,7 +38,7 @@ const OrganizerHandbook = () => {
             {/* Step 1 */}
             <div>
               <h3 className="fw-bold text-white mb-3 d-flex align-items-center gap-2">
-                <FileText className="text-primary" size={24} /> 1. Khởi tạo & Đăng ký sự kiện
+                <FileText className="text-muted" size={24} /> 1. Khởi tạo & Đăng ký sự kiện
               </h3>
               <p className="text-muted lh-base">
                 Ban tổ chức đăng nhập vào cổng quản trị chuyên dụng (Manager Portal), điền đầy đủ hồ sơ tổ chức và gửi yêu cầu kiểm duyệt sự kiện.
@@ -62,7 +62,7 @@ const OrganizerHandbook = () => {
             {/* Step 2 */}
             <div>
               <h3 className="fw-bold text-white mb-3 d-flex align-items-center gap-2">
-                <DollarSign className="text-success" size={24} /> 2. Quản lý Doanh thu & Báo cáo Realtime
+                <DollarSign className="text-muted" size={24} /> 2. Quản lý Doanh thu & Báo cáo Realtime
               </h3>
               <p className="text-muted lh-base">
                 Hệ thống cung cấp dashboard biểu đồ phân tích trực quan: số lượng vé đã bán, tỉ lệ lấp đầy ghế, doanh thu theo từng ngày và báo cáo thanh toán minh bạch, đối soát tự động.
@@ -102,7 +102,7 @@ const OrganizerHandbook = () => {
             </div>
 
             <div className="glass-card p-4 border border-secondary border-opacity-25">
-              <h6 className="fw-bold text-white mb-2">📞 Hỗ trợ đối tác</h6>
+              <h6 className="fw-bold text-white mb-2">Hỗ trợ đối tác</h6>
               <p className="small text-muted mb-0">
                 Email phòng hợp tác phát triển sự kiện: <br />
                 <span className="text-primary">partner@fivetickets.vn</span>

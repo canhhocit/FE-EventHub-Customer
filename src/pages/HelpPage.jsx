@@ -7,21 +7,21 @@ const HelpPage = () => {
       id: "ticket-guide",
       title: "Hành trình Mua & Soát vé",
       excerpt: "Mọi thứ bạn cần biết để sở hữu tấm vé sự kiện trong tầm tay và vào cửa thuận lợi với mã QR.",
-      icon: <Ticket size={36} className="text-primary" />,
+      icon: <Ticket size={36} className="text-muted" />,
       link: "/guide"
     },
     {
       id: "security-tips",
       title: "An toàn & Bảo mật",
       excerpt: "Mẹo bảo vệ quyền sở hữu vé điện tử, cảnh báo lừa đảo vé chuyển nhượng và bảo mật tài khoản.",
-      icon: <ShieldCheck size={36} className="text-danger" />,
+      icon: <ShieldCheck size={36} className="text-muted" />,
       link: "/security"
     },
     {
       id: "organizer-handbook",
       title: "Cẩm nang Ban tổ chức",
       excerpt: "Quy trình đăng ký đối tác, khởi tạo sự kiện, mở bán vé và vận hành soát vé tại cửa.",
-      icon: <Rocket size={36} className="text-success" />,
+      icon: <Rocket size={36} className="text-muted" />,
       link: "/organizer-handbook"
     }
   ];

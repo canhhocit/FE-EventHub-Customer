@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Calendar, MapPin } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   getImageUrl,
   handleImageError,
@@ -180,27 +180,28 @@ const NewsSlider = ({ slides = [] }) => {
               <div className="container">
                 <div className="news-meta">
                   {slide.tag && <span className="news-tag">{slide.tag}</span>}
-                  {slide.date && (
-                    <span className="d-inline-flex align-items-center gap-1">
-                      <Calendar size={13} /> {formatDate(slide.date)}
-                    </span>
-                  )}
-                  {slide.location && (
-                    <span className="d-inline-flex align-items-center gap-1">
-                      <MapPin size={13} /> {slide.location}
-                    </span>
-                  )}
+                  {slide.date && <span>{formatDate(slide.date)}</span>}
+                  {slide.location && <span>{slide.location}</span>}
                 </div>
                 <h2 className="news-title">
                   <Link
                     to={slide.href}
-                    className="text-white stretched-link"
+                    className="text-white"
                     tabIndex={i === index ? 0 : -1}
+                    draggable={false}
                   >
                     {slide.title}
                   </Link>
                 </h2>
                 {slide.summary && <p className="news-summary">{slide.summary}</p>}
+                <Link
+                  to={slide.href}
+                  className="news-cta"
+                  tabIndex={i === index ? 0 : -1}
+                  draggable={false}
+                >
+                  Khám phá ngay
+                </Link>
               </div>
             </div>
           </article>
