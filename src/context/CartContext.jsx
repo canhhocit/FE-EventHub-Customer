@@ -1,119 +1,142 @@
-import { createContext, useState, useEffect, useContext } from 'react';
+import {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+  useRef,
+} from 'react';
 import { useAuth } from './AuthContext';
-import { getCart, addToCartApi, removeFromCartApi, clearCartApi } from '../utils/api';
+import {
+  getCart,
+  addToCartApi,
+  removeFromCartApi,
+  clearCartApi,
+  updateCartItemApi,
+} from '../utils/api';
 
-const CartContext = createContext();
+const CartContext = createContext(null);
 
 export const useCart = () => useContext(CartContext);
 
-export const CartProvider = ({ children }) => {
-  const [cart, setCart] = useState([]); // Trả về Mảng như cũ
-  const { token } = useAuth();
+const mapItem = (item) => ({
+  cartItemId: item.cartItemId ?? item.id,
+  eventId: item.eventId,
+  eventName: item.eventName,
+  eventImage: item.eventImage,
+  ticketTypeId: item.ticketTypeId,
+  ticketTypeName: item.ticketTypeName,
+  price: Number(item.unitPrice ?? item.price ?? 0),
+  quantity: Number(item.quantity ?? 0),
+  saleEndDate: item.saleEndDate,
+});
 
-  const fetchBackendCart = async () => {
+export const CartProvider = ({ children }) => {
+  const [cart, setCart] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const { token } = useAuth();
+  const requestId = useRef(0);
+
+  /** Returns the fresh cart so callers can act on the new server-side ids. */
+  const fetchBackendCart = useCallback(async () => {
     if (!token) {
       setCart([]);
-      return;
+      return [];
     }
+    const id = ++requestId.current;
+    setLoading(true);
     try {
       const data = await getCart();
-      if (data.code === 1000 && data.result) {
-        const mappedItems = data.result.items.map(item => ({
-          cartItemId: item.id,
-          eventId: item.eventId,
-          eventName: item.eventName,
-          eventImage: item.eventImage,
-          ticketTypeId: item.ticketTypeId,
-          ticketTypeName: item.ticketTypeName,
-          price: item.unitPrice,
-          quantity: item.quantity,
-          saleEndDate: item.saleEndDate
-        }));
-        setCart(mappedItems);
-      }
+      const items = (data?.code === 1000 ? data.result?.items : null) || [];
+      const mapped = items.map(mapItem);
+      // Ignore responses from a request that a newer one has superseded.
+      if (id === requestId.current) setCart(mapped);
+      return mapped;
     } catch (error) {
-      console.error("Failed to fetch backend cart:", error);
+      if (id === requestId.current) setCart([]);
+      throw error;
+    } finally {
+      if (id === requestId.current) setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchBackendCart();
   }, [token]);
 
-  const addToCart = async (event, tickets) => {
-    const token = localStorage.getItem('token');
-    
-    if (token) {
-      for (const t of tickets) {
-        try {
-          await addToCartApi(t.typeId, t.qty);
-        } catch (error) {
-          console.error("Failed to sync item to backend:", error);
-        }
-      }
-      await fetchBackendCart();
-    } else {
-      const newItems = tickets.map(t => ({
-        eventId: event.id,
-        eventName: event.name,
-        eventImage: event.imageUrls?.[0],
-        ticketTypeId: t.typeId,
-        ticketTypeName: t.typeName,
-        price: t.price,
-        quantity: t.qty
-      }));
+  useEffect(() => {
+    fetchBackendCart().catch(() => {
+      /* surfaced by the page that triggers an action, not on background load */
+    });
+  }, [fetchBackendCart]);
 
-      setCart(prev => {
-        let updatedCart = [...prev];
-        newItems.forEach(newItem => {
-          const existingIdx = updatedCart.findIndex(item => item.ticketTypeId === newItem.ticketTypeId);
-          if (existingIdx >= 0) {
-            updatedCart[existingIdx].quantity += newItem.quantity;
-          } else {
-            updatedCart.push(newItem);
-          }
-        });
-        return updatedCart;
-      });
+  /**
+   * Adds tickets and reports partial failures instead of swallowing them —
+   * the old version always told the user "added successfully".
+   */
+  const addToCart = async (tickets) => {
+    if (!token) {
+      throw new Error('Vui lòng đăng nhập để thêm vé vào giỏ hàng.');
     }
+
+    const failures = [];
+    for (const t of tickets) {
+      try {
+        await addToCartApi(t.typeId, t.qty);
+      } catch (error) {
+        failures.push(`${t.typeName}: ${error.message}`);
+      }
+    }
+
+    const updated = await fetchBackendCart();
+
+    if (failures.length) {
+      const error = new Error(failures.join(' · '));
+      error.partial = failures.length < tickets.length;
+      error.cart = updated;
+      throw error;
+    }
+    return updated;
   };
 
-  const removeFromCart = async (ticketTypeId) => {
-    const token = localStorage.getItem('token');
-    const itemToRemove = cart.find(item => item.ticketTypeId === ticketTypeId);
+  const removeFromCart = async (cartItemId) => {
+    const item = cart.find((i) => i.cartItemId === cartItemId);
+    if (!item) return;
+    await removeFromCartApi(item.cartItemId);
+    await fetchBackendCart();
+  };
 
-    if (token && itemToRemove?.cartItemId) {
-      try {
-        await removeFromCartApi(itemToRemove.cartItemId);
-      } catch (error) {
-        console.error("Failed to remove item from backend:", error);
-      }
-    }
-    setCart(prev => prev.filter(item => item.ticketTypeId !== ticketTypeId));
+  const updateQuantity = async (cartItemId, quantity) => {
+    if (quantity < 1) return removeFromCart(cartItemId);
+    await updateCartItemApi(cartItemId, quantity);
+    await fetchBackendCart();
   };
 
   const clearCart = async () => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        await clearCartApi();
-      } catch (error) {
-        console.error("Failed to clear cart on backend:", error);
-      }
-    }
+    if (token) await clearCartApi();
     setCart([]);
   };
 
-  const getCartCount = () => {
-    return cart.reduce((total, item) => total + item.quantity, 0);
-  };
+  const getCartCount = useCallback(
+    () => cart.reduce((total, item) => total + item.quantity, 0),
+    [cart],
+  );
 
-  const getCartTotal = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
-  };
+  const getCartTotal = useCallback(
+    () => cart.reduce((total, item) => total + item.price * item.quantity, 0),
+    [cart],
+  );
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, clearCart, getCartCount, getCartTotal, fetchBackendCart }}>
+    <CartContext.Provider
+      value={{
+        cart,
+        loading,
+        addToCart,
+        removeFromCart,
+        updateQuantity,
+        clearCart,
+        getCartCount,
+        getCartTotal,
+        fetchBackendCart,
+      }}
+    >
       {children}
     </CartContext.Provider>
   );

@@ -1,37 +1,40 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { CheckCircle, ArrowRight } from 'lucide-react';
+import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { CheckCircle2, ArrowRight } from 'lucide-react';
+import { useCart } from '../context/CartContext';
 
 const PaymentSuccess = () => {
-  const navigate = useNavigate();
+  const { fetchBackendCart } = useCart();
+
+  // The paid items are gone from the server cart — pull the new state so the
+  // navbar badge doesn't keep counting tickets that were already bought.
+  useEffect(() => {
+    fetchBackendCart().catch(() => {});
+    try {
+      sessionStorage.removeItem('checkoutItemIds');
+    } catch {
+      /* ignore */
+    }
+  }, [fetchBackendCart]);
 
   return (
-    <div className="container py-5 text-center animate-fade-up">
-      <div className="glass-card p-5 mx-auto" style={{ maxWidth: '600px' }}>
-        <div className="mb-4 d-flex justify-content-center">
-          <div className="bg-success bg-opacity-10 p-3 rounded-circle">
-            <CheckCircle size={80} className="text-success" />
-          </div>
-        </div>
-        
-        <h1 className="fw-bold text-white mb-3">Thanh toán thành công!</h1>
-        <p className="text-muted mb-5 fs-5">
-          Cảm ơn bạn đã mua vé. Đơn hàng của bạn đang được xử lý và vé điện tử sẽ được gửi đến email của bạn trong giây lát.
+    <div className="container py-5">
+      <div className="panel p-5 text-center mx-auto animate-fade-up" style={{ maxWidth: 520 }}>
+        <CheckCircle2 size={48} className="mb-3" style={{ color: 'var(--success)' }} />
+        <h1 className="h4 fw-bold mb-2">Thanh toán thành công</h1>
+        <p className="text-muted mb-4">
+          Cảm ơn bạn. Vé điện tử và hóa đơn sẽ được gửi tới email trong ít phút.
         </p>
-
-        <div className="d-flex flex-column flex-sm-row gap-3 justify-content-center">
-          <button 
-            onClick={() => navigate('/my-tickets')}
-            className="btn btn-gradient px-4 py-2"
-          >
+        <div className="d-flex flex-column flex-sm-row gap-2 justify-content-center">
+          <Link to="/my-tickets" className="btn btn-accent px-4 py-2">
             Xem vé của tôi
-          </button>
-          <button 
-            onClick={() => navigate('/')}
-            className="btn btn-outline-primary px-4 py-2"
+          </Link>
+          <Link
+            to="/"
+            className="btn btn-ghost px-4 py-2 d-inline-flex align-items-center justify-content-center gap-2"
           >
-            Quay lại trang chủ <ArrowRight size={18} className="ms-2" />
-          </button>
+            Về trang chủ <ArrowRight size={16} />
+          </Link>
         </div>
       </div>
     </div>

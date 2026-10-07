@@ -1,159 +1,219 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { User, Mail, Phone, MapPin, Save, ShieldCheck, Loader2 } from 'lucide-react';
-import { getProfile, updateProfile } from '../utils/api';
+import { updateProfile } from '../utils/api';
+import { formatDate } from '../utils/constants';
 
 const Profile = () => {
-  const { user: authUser, token } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const toast = useToast();
+
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     phone: '',
-    address: ''
+    address: '',
   });
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: '', content: '' });
 
+  // Seed the form from the session's profile — no second request needed.
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (authUser) {
-        try {
-          const data = await getProfile();
-          if (data.code === 1000) {
-            const u = data.result;
-            setFormData({
-              fullName: u.fullName || u.firstName + ' ' + u.lastName || '',
-              email: u.email || '',
-              phone: u.phone || '',
-              address: u.address || ''
-            });
-          }
-        } catch (error) {
-          console.error("Fetch profile failed:", error);
-        }
-      }
-    };
-    fetchUserData();
-  }, [authUser]);
+    if (!user) return;
+    setFormData({
+      fullName: user.fullName || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      address: user.address || '',
+    });
+  }, [user]);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => (prev[name] ? { ...prev, [name]: undefined } : prev));
+  };
+
+  const validate = () => {
+    const next = {};
+    if (!formData.fullName.trim()) next.fullName = 'Vui lòng nhập họ và tên.';
+    else if (formData.fullName.trim().length > 100)
+      next.fullName = 'Họ tên tối đa 100 ký tự.';
+    if (formData.phone && !/^[0-9]{10,11}$/.test(formData.phone.trim()))
+      next.phone = 'Số điện thoại phải gồm 10–11 chữ số.';
+    if (formData.address.length > 255) next.address = 'Địa chỉ tối đa 255 ký tự.';
+    return next;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setMessage({ type: '', content: '' });
+    if (loading || !user) return;
 
+    const found = validate();
+    if (Object.keys(found).length) {
+      setErrors(found);
+      return;
+    }
+
+    setLoading(true);
     try {
-      // Tận dụng updateProfile service
-      const data = await updateProfile(authUser.username, formData);
-      if (data.code === 1000) {
-        setMessage({ type: 'success', content: 'Cập nhật thông tin thành công!' });
-      } else {
-        setMessage({ type: 'danger', content: data.message || 'Cập nhật thất bại' });
+      const data = await updateProfile(user.username, {
+        fullName: formData.fullName.trim(),
+        phone: formData.phone.trim(),
+        address: formData.address.trim(),
+      });
+      if (data?.code !== 1000) {
+        throw new Error(data?.message || 'Cập nhật thất bại.');
       }
-    } catch (error) {
-      setMessage({ type: 'danger', content: 'Lỗi kết nối máy chủ' });
+      await refreshUser().catch(() => {});
+      toast?.success('Đã cập nhật thông tin cá nhân.');
+    } catch (err) {
+      toast?.error(err.message || 'Cập nhật thất bại.');
     } finally {
       setLoading(false);
     }
   };
 
-  if (!authUser) return <div className="container py-5 text-center">Đang tải...</div>;
+  if (!user) {
+    return (
+      <div className="container py-5 text-center text-muted">
+        <Loader2 size={28} className="spin mb-3" />
+        <p className="small mb-0">Đang tải thông tin…</p>
+      </div>
+    );
+  }
+
+  const roleName = user.roles?.[0]?.name || 'CUSTOMER';
+  const initial = (formData.fullName || user.username || '?').charAt(0).toUpperCase();
 
   return (
-    <div className="container py-5">
-      <div className="row justify-content-center">
-        <div className="col-lg-8 animate-fade-up">
-          <div className="glass-card p-5">
-            <div className="d-flex align-items-center gap-4 mb-5 pb-4 border-bottom border-secondary">
-              <div className="avatar-large bg-gradient d-flex align-items-center justify-content-center text-white fs-1 fw-bold rounded-circle shadow-lg" style={{ width: '100px', height: '100px', background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)' }}>
-                {formData.fullName ? formData.fullName.charAt(0) : authUser.username.charAt(0)}
+    <div className="container py-4">
+      <div className="mx-auto" style={{ maxWidth: 760 }}>
+        <h1 className="h4 fw-bold mb-4">Thông tin cá nhân</h1>
+
+        <div className="panel p-4 mb-4">
+          <div className="d-flex align-items-center gap-3">
+            <div
+              className="rounded-circle flex-shrink-0 place-items-center fw-bold"
+              style={{
+                width: 60,
+                height: 60,
+                background: 'var(--surface-3)',
+                fontSize: '1.5rem',
+              }}
+            >
+              {initial}
+            </div>
+            <div className="min-w-0">
+              <div className="fw-bold text-truncate">
+                {formData.fullName || user.username}
               </div>
-              <div>
-                <h2 className="fw-bold mb-1">{formData.fullName || authUser.username}</h2>
-                <div className="badge bg-primary-subtle text-primary rounded-pill px-3 py-2">
-                  <ShieldCheck size={14} className="me-1" /> {authUser.roles?.[0]?.name || 'KHÁCH HÀNG'}
-                </div>
+              <div className="text-muted small text-truncate">{user.email}</div>
+              <div className="d-flex flex-wrap align-items-center gap-2 mt-2">
+                <span className="pill pill-soon d-inline-flex align-items-center gap-1">
+                  <ShieldCheck size={12} /> {roleName}
+                </span>
+                {user.createdAt && (
+                  <span className="text-muted" style={{ fontSize: '0.75rem' }}>
+                    Tham gia {formatDate(user.createdAt)}
+                  </span>
+                )}
               </div>
             </div>
+          </div>
+        </div>
 
-            {message.content && (
-              <div className={`alert alert-${message.type} alert-dismissible fade show rounded-4 mb-4`} role="alert">
-                {message.content}
-                <button type="button" className="btn-close" onClick={() => setMessage({ type: '', content: '' })}></button>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="row g-4">
-              <div className="col-md-6">
-                <label className="form-label text-muted small fw-bold text-uppercase">
-                  <User size={14} className="me-1" /> Họ và Tên
-                </label>
-                <input 
-                  type="text" 
+        <form onSubmit={handleSubmit} className="panel p-4" noValidate>
+          <div className="row g-3">
+            <div className="col-md-6">
+              <label className="form-label">Họ và tên</label>
+              <div className="field">
+                <User size={16} />
+                <input
+                  type="text"
                   name="fullName"
-                  className="form-control bg-dark text-white border-secondary py-2" 
+                  className="form-control"
                   value={formData.fullName}
                   onChange={handleChange}
                   required
                 />
               </div>
-              <div className="col-md-6">
-                <label className="form-label text-muted small fw-bold text-uppercase">
-                  <Mail size={14} className="me-1" /> Email
-                </label>
-                <input 
-                  type="email" 
-                  name="email"
-                  className="form-control bg-dark text-white border-secondary py-2" 
+              {errors.fullName && (
+                <div className="small mt-1" style={{ color: 'var(--danger)' }}>
+                  {errors.fullName}
+                </div>
+              )}
+            </div>
+
+            <div className="col-md-6">
+              <label className="form-label">Email</label>
+              <div className="field">
+                <Mail size={16} />
+                <input
+                  type="email"
+                  className="form-control"
                   value={formData.email}
-                  onChange={handleChange}
-                  required
                   disabled
-                  style={{opacity: 0.5, cursor: "not-allowed"}}
                 />
               </div>
-              <div className="col-md-6">
-                <label className="form-label text-muted small fw-bold text-uppercase">
-                  <Phone size={14} className="me-1" /> Số điện thoại
-                </label>
-                <input 
-                  type="text" 
+              <div className="text-muted mt-1" style={{ fontSize: '0.75rem' }}>
+                Email dùng để nhận vé, không thể thay đổi.
+              </div>
+            </div>
+
+            <div className="col-md-6">
+              <label className="form-label">Số điện thoại</label>
+              <div className="field">
+                <Phone size={16} />
+                <input
+                  type="tel"
                   name="phone"
-                  className="form-control bg-dark text-white border-secondary py-2" 
+                  className="form-control"
+                  inputMode="numeric"
+                  placeholder="0912345678"
                   value={formData.phone}
                   onChange={handleChange}
                 />
               </div>
-              <div className="col-md-6">
-                <label className="form-label text-muted small fw-bold text-uppercase">
-                  <MapPin size={14} className="me-1" /> Địa chỉ
-                </label>
-                <input 
-                  type="text" 
+              {errors.phone && (
+                <div className="small mt-1" style={{ color: 'var(--danger)' }}>
+                  {errors.phone}
+                </div>
+              )}
+            </div>
+
+            <div className="col-md-6">
+              <label className="form-label">Địa chỉ</label>
+              <div className="field">
+                <MapPin size={16} />
+                <input
+                  type="text"
                   name="address"
-                  className="form-control bg-dark text-white border-secondary py-2" 
+                  className="form-control"
                   value={formData.address}
                   onChange={handleChange}
                 />
               </div>
+              {errors.address && (
+                <div className="small mt-1" style={{ color: 'var(--danger)' }}>
+                  {errors.address}
+                </div>
+              )}
+            </div>
 
-              <div className="col-12 pt-4">
-                <button type="submit" className="btn btn-gradient w-100 py-3 rounded-pill fw-bold shadow-lg d-flex align-items-center justify-content-center gap-2" disabled={loading}>
-                  {loading ? (
-                    <Loader2 className="spinner-border spinner-border-sm animate-spin" />
-                  ) : (
-                    <>
-                      <Save size={18} /> LƯU THAY ĐỔI
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
+            <div className="col-12 pt-2">
+              <button
+                type="submit"
+                className="btn btn-accent px-4 py-2 d-inline-flex align-items-center gap-2"
+                disabled={loading}
+              >
+                {loading ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
+                Lưu thay đổi
+              </button>
+            </div>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );

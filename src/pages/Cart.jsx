@@ -1,174 +1,293 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Trash2, ArrowRight } from 'lucide-react';
+import {
+  ShoppingCart,
+  Trash2,
+  ArrowRight,
+  Plus,
+  Minus,
+  Loader2,
+  AlertTriangle,
+} from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { getImageUrl } from '../utils/constants';
+import { useToast } from '../context/ToastContext';
+import {
+  getImageUrl,
+  handleImageError,
+  formatCurrency,
+} from '../utils/constants';
 
 const Cart = () => {
-  const { cart, removeFromCart, clearCart } = useCart();
+  const { cart, loading, removeFromCart, updateQuantity, clearCart } = useCart();
+  const toast = useToast();
   const navigate = useNavigate();
+
   const [selectedIds, setSelectedIds] = useState([]);
+  const [busyId, setBusyId] = useState(null);
+  const [initialised, setInitialised] = useState(false);
 
-  // Tự động chọn tất cả khi vào trang
+  // Select everything on the first load, then keep the selection in sync with
+  // the cart — without silently re-selecting items the user just unchecked.
   useEffect(() => {
-    if (cart.length > 0 && selectedIds.length === 0) {
-      setSelectedIds(cart.map(item => item.cartItemId));
-    }
-  }, [cart]);
+    const ids = cart.map((item) => item.cartItemId);
+    setSelectedIds((prev) => {
+      if (!initialised && ids.length > 0) return ids;
+      return prev.filter((id) => ids.includes(id));
+    });
+    if (!initialised && (ids.length > 0 || !loading)) setInitialised(true);
+  }, [cart, loading, initialised]);
 
-  const toggleSelect = (id) => {
-    setSelectedIds(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+  const toggleSelect = (id) =>
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     );
-  };
 
-  const toggleSelectAll = () => {
-    if (selectedIds.length === cart.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(cart.map(item => item.cartItemId));
+  const allSelected = cart.length > 0 && selectedIds.length === cart.length;
+
+  const toggleSelectAll = () =>
+    setSelectedIds(allSelected ? [] : cart.map((item) => item.cartItemId));
+
+  const { selectedTotal, selectedCount, hasExpired } = useMemo(() => {
+    const selected = cart.filter((i) => selectedIds.includes(i.cartItemId));
+    return {
+      selectedTotal: selected.reduce((t, i) => t + i.price * i.quantity, 0),
+      selectedCount: selected.reduce((t, i) => t + i.quantity, 0),
+      hasExpired: selected.some(
+        (i) => i.saleEndDate && new Date(i.saleEndDate) < new Date(),
+      ),
+    };
+  }, [cart, selectedIds]);
+
+  const runItemAction = async (id, action, failureMessage) => {
+    setBusyId(id);
+    try {
+      await action();
+    } catch (err) {
+      toast?.error(err.message || failureMessage);
+    } finally {
+      setBusyId(null);
     }
   };
 
-  const selectedItems = cart.filter(item => selectedIds.includes(item.cartItemId));
-  const selectedTotal = selectedItems.reduce((total, item) => total + (item.price * item.quantity), 0);
-  const selectedCount = selectedItems.reduce((total, item) => total + item.quantity, 0);
+  const handleClear = async () => {
+    if (!window.confirm('Xóa toàn bộ vé trong giỏ hàng?')) return;
+    try {
+      await clearCart();
+      setSelectedIds([]);
+      toast?.success('Đã xóa giỏ hàng.');
+    } catch (err) {
+      toast?.error(err.message || 'Không xóa được giỏ hàng.');
+    }
+  };
 
   const handleCheckout = () => {
     if (selectedIds.length === 0) {
-      alert("Vui lòng chọn ít nhất một mục để thanh toán!");
+      toast?.warning('Vui lòng chọn ít nhất một vé để thanh toán.');
+      return;
+    }
+    if (hasExpired) {
+      toast?.error('Có vé đã hết hạn bán trong lựa chọn. Vui lòng bỏ chọn hoặc xóa vé đó.');
       return;
     }
     navigate('/checkout', { state: { selectedCartItemIds: selectedIds } });
   };
 
+  if (loading && cart.length === 0) {
+    return (
+      <div className="container py-5 text-center text-muted">
+        <Loader2 size={28} className="spin mb-3" />
+        <p className="small mb-0">Đang tải giỏ hàng…</p>
+      </div>
+    );
+  }
+
+  if (cart.length === 0) {
+    return (
+      <div className="container py-5">
+        <div className="panel p-5 text-center mx-auto" style={{ maxWidth: 480 }}>
+          <ShoppingCart size={34} className="text-muted mb-3" />
+          <h1 className="h5 fw-bold mb-2">Giỏ hàng trống</h1>
+          <p className="text-muted small mb-4">
+            Bạn chưa chọn vé nào. Khám phá các sự kiện đang mở bán.
+          </p>
+          <Link to="/" className="btn btn-accent px-4 py-2">
+            Khám phá sự kiện
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container py-4">
-      <div className="d-flex justify-content-between align-items-center mb-4 animate-fade-up">
-        <h2 className="fw-bold mb-0 d-flex align-items-center gap-2">
-          <ShoppingCart size={28} className="text-primary" /> Giỏ hàng 
-        </h2>
-        {cart.length > 0 && (
-          <button className="btn btn-outline-danger btn-sm rounded-pill px-3" onClick={clearCart}>
-            Xóa tất cả
-          </button>
-        )}
+      <div className="d-flex align-items-center justify-content-between mb-4">
+        <h1 className="h4 fw-bold mb-0 d-flex align-items-center gap-2">
+          <ShoppingCart size={22} className="text-muted" /> Giỏ hàng
+        </h1>
+        <button className="btn btn-ghost btn-sm px-3 py-2" onClick={handleClear}>
+          Xóa tất cả
+        </button>
       </div>
 
       <div className="row g-4">
-        {cart.length === 0 ? (
-          <div className="col-12 text-center py-5 animate-fade-up">
-            <div className="glass-card p-5 mx-auto" style={{ maxWidth: '600px' }}>
-              <ShoppingCart size={48} className="mb-3 text-muted" />
-              <h4 className="fw-bold">Giỏ hàng trống</h4>
-              <p className="text-muted">Bạn chưa chọn vé sự kiện nào. Hãy quay lại trang chủ để khám phá</p>
-              <Link to="/" className="btn btn-gradient rounded-pill px-4 mt-2">
-                Khám phá Sự kiện
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="col-lg-8 animate-fade-up">
-              <div className="glass-card p-4">
-                <div className="table-responsive">
-                  <table className="table table-dark table-borderless table-hover align-middle mb-0">
-                    <thead>
-                      <tr className="border-bottom border-secondary">
-                        <th scope="col" style={{ width: '40px' }}>
-                          <input 
-                            type="checkbox" 
-                            className="form-check-input cursor-pointer"
-                            checked={selectedIds.length === cart.length && cart.length > 0}
-                            onChange={toggleSelectAll}
-                          />
-                        </th>
-                        <th scope="col">Sự kiện / Loại vé</th>
-                        <th scope="col" className="text-center">Đơn giá</th>
-                        <th scope="col" className="text-center">Số lượng</th>
-                        <th scope="col" className="text-end">Tạm tính</th>
-                        <th scope="col"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {cart.map((item, idx) => (
-                        <tr key={idx} className="border-bottom border-secondary">
-                          <td>
-                            <input 
-                              type="checkbox" 
-                              className="form-check-input cursor-pointer"
-                              checked={selectedIds.includes(item.cartItemId)}
-                              onChange={() => toggleSelect(item.cartItemId)}
-                            />
-                          </td>
-                          <td>
-                            <div className="d-flex align-items-center gap-3 py-2">
-                              {item.eventImage && (
-                                <img src={getImageUrl(item.eventImage)} alt="Event" className="rounded" style={{ width: '60px', height: '60px', objectFit: 'cover' }} />
-                              )}
-                              <div>
-                                <h6 className="mb-1 fw-bold text-truncate" style={{ maxWidth: '200px' }}>{item.eventName}</h6>
-                                <div className="d-flex align-items-center gap-2">
-                                  <span className="badge bg-secondary">{item.ticketTypeName}</span>
-                                  {item.saleEndDate && new Date(item.saleEndDate) < new Date() && (
-                                    <span className="text-danger small fw-bold">
-                                      (Hết hạn bán - Hãy xóa)
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="text-center">{item.price.toLocaleString('vi-VN')}đ</td>
-                          <td className="text-center">
-                            <span className="fw-bold">{item.quantity}</span>
-                          </td>
-                          <td className="text-end fw-bold text-primary">
-                            {(item.price * item.quantity).toLocaleString('vi-VN')}đ
-                          </td>
-                          <td className="text-end">
-                            <button 
-                              className="btn btn-sm btn-outline-danger border-0"
-                              onClick={() => removeFromCart(item.ticketTypeId)}
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-            <div className="col-lg-4 animate-fade-up" style={{ animationDelay: '0.1s' }}>
-              <div className="glass-card p-4 sticky-top" style={{ top: '100px' }}>
-                <div className="d-flex justify-content-between mb-3 text-muted">
-                  <span>Vé đã chọn:</span>
-                  <span className="fw-bold">{selectedCount}</span>
-                </div>
-                
-                <hr className="border-secondary" />
-                
-                <div className="d-flex justify-content-between mb-4">
-                  <span className="fw-bold fs-5">Tạm tính:</span>
-                  <span className="fw-bold fs-4 text-gradient">{selectedTotal.toLocaleString('vi-VN')}đ</span>
-                </div>
+        <div className="col-lg-8">
+          <div className="panel">
+            <label
+              className="d-flex align-items-center gap-2 p-3 border-bottom small text-muted mb-0"
+              style={{ cursor: 'pointer' }}
+            >
+              <input
+                type="checkbox"
+                className="form-check-input mt-0"
+                checked={allSelected}
+                onChange={toggleSelectAll}
+              />
+              Chọn tất cả ({cart.length})
+            </label>
 
-                <button 
-                  className={`btn ${selectedIds.length > 0 ? 'btn-gradient' : 'btn-secondary'} w-100 py-3 rounded-pill fs-5 shadow-lg d-flex align-items-center justify-content-center gap-2`}
-                  onClick={handleCheckout}
-                  disabled={selectedIds.length === 0}
+            {cart.map((item) => {
+              const expired =
+                item.saleEndDate && new Date(item.saleEndDate) < new Date();
+              const busy = busyId === item.cartItemId;
+
+              return (
+                <div
+                  key={item.cartItemId}
+                  className="d-flex align-items-start gap-3 p-3 border-bottom"
+                  style={{ opacity: busy ? 0.5 : 1 }}
                 >
-                  Thanh toán ({selectedIds.length}) <ArrowRight size={20} />
-                </button>
-                <Link to="/" className="btn btn-outline-light w-100 py-2 rounded-pill mt-3">
-                  Tiếp tục chọn vé
-                </Link>
-              </div>
+                  <input
+                    type="checkbox"
+                    className="form-check-input mt-2 flex-shrink-0"
+                    checked={selectedIds.includes(item.cartItemId)}
+                    onChange={() => toggleSelect(item.cartItemId)}
+                    aria-label={`Chọn ${item.eventName}`}
+                  />
+
+                  <img
+                    src={getImageUrl(item.eventImage)}
+                    onError={handleImageError}
+                    alt=""
+                    className="rounded flex-shrink-0"
+                    style={{ width: 72, height: 54, objectFit: 'cover' }}
+                  />
+
+                  <div className="flex-grow-1 min-w-0">
+                    <Link
+                      to={`/events/${item.eventId}`}
+                      className="fw-semibold small d-block text-truncate text-decoration-none"
+                      style={{ color: 'var(--text)' }}
+                    >
+                      {item.eventName}
+                    </Link>
+                    <div className="d-flex flex-wrap align-items-center gap-2 mt-1">
+                      <span className="pill pill-neutral">{item.ticketTypeName}</span>
+                      {expired && (
+                        <span className="pill pill-danger d-inline-flex align-items-center gap-1">
+                          <AlertTriangle size={11} /> Hết hạn bán
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-muted mt-1" style={{ fontSize: '0.8125rem' }}>
+                      {formatCurrency(item.price)} / vé
+                    </div>
+                  </div>
+
+                  <div className="d-flex flex-column align-items-end gap-2 flex-shrink-0">
+                    <div className="fw-bold">
+                      {formatCurrency(item.price * item.quantity)}
+                    </div>
+                    <div className="d-flex align-items-center gap-1">
+                      <button
+                        type="button"
+                        className="btn btn-subtle btn-sm px-2 py-1"
+                        disabled={busy}
+                        onClick={() =>
+                          runItemAction(
+                            item.cartItemId,
+                            () => updateQuantity(item.cartItemId, item.quantity - 1),
+                            'Không cập nhật được số lượng.',
+                          )
+                        }
+                        aria-label="Giảm số lượng"
+                      >
+                        <Minus size={13} />
+                      </button>
+                      <span className="small fw-semibold text-center" style={{ minWidth: 24 }}>
+                        {item.quantity}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-subtle btn-sm px-2 py-1"
+                        disabled={busy}
+                        onClick={() =>
+                          runItemAction(
+                            item.cartItemId,
+                            () => updateQuantity(item.cartItemId, item.quantity + 1),
+                            'Không cập nhật được số lượng.',
+                          )
+                        }
+                        aria-label="Tăng số lượng"
+                      >
+                        <Plus size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm border-0 px-2 py-1 text-muted"
+                        disabled={busy}
+                        onClick={() =>
+                          runItemAction(
+                            item.cartItemId,
+                            () => removeFromCart(item.cartItemId),
+                            'Không xóa được vé.',
+                          )
+                        }
+                        aria-label="Xóa khỏi giỏ"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="col-lg-4">
+          <div className="panel p-4 sticky-top" style={{ top: 'calc(var(--nav-h) + 16px)' }}>
+            <h2 className="section-title h6 mb-3">Tóm tắt đơn hàng</h2>
+
+            <div className="d-flex justify-content-between small text-muted mb-2">
+              <span>Vé đã chọn</span>
+              <span style={{ color: 'var(--text)' }}>{selectedCount}</span>
             </div>
-          </>
-        )}
+
+            <hr className="divider my-3" />
+
+            <div className="d-flex justify-content-between align-items-baseline mb-4">
+              <span className="fw-semibold">Tạm tính</span>
+              <span className="fw-bold fs-5">{formatCurrency(selectedTotal)}</span>
+            </div>
+
+            {hasExpired && (
+              <div className="alert alert-danger py-2 px-3">
+                Lựa chọn của bạn có vé đã hết hạn bán.
+              </div>
+            )}
+
+            <button
+              className="btn btn-accent w-100 py-2 d-flex align-items-center justify-content-center gap-2"
+              onClick={handleCheckout}
+              disabled={selectedIds.length === 0}
+            >
+              Thanh toán ({selectedIds.length}) <ArrowRight size={16} />
+            </button>
+            <Link to="/" className="btn btn-ghost w-100 py-2 mt-2">
+              Tiếp tục chọn vé
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -1,41 +1,67 @@
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin } from 'lucide-react';
-import { getImageUrl } from '../utils/constants';
+import {
+  getImageUrl,
+  handleImageError,
+  formatDate,
+  formatCurrency,
+  getEventStatus,
+  getLowestPrice,
+  getEventLocation,
+} from '../utils/constants';
 
-const EventCard = ({ event, index }) => {
+const EventCard = ({ event }) => {
+  const status = getEventStatus(event.status);
+  const lowestPrice = getLowestPrice(event);
+
   return (
-    <div className="col animate-fade-up" style={{ animationDelay: `${0.05 * index}s` }}>
-      <div className="card glass-card h-100 border-0 overflow-hidden">
-        <img 
-          src={getImageUrl(event.imageUrls?.[0])} 
-          className="card-img-top" 
-          alt={event.name}
-          style={{ height: '200px', objectFit: 'cover' }}
+    <article className="tile">
+      <div className="tile-media">
+        <img
+          src={getImageUrl(event.imageUrls?.[0])}
+          onError={handleImageError}
+          alt=""
+          loading="lazy"
         />
-        <div className="card-body d-flex flex-column">
-          <span className={`badge align-self-start mb-2 ${
-            event.status === 'OPENING' ? 'bg-success' : 
-            event.status === 'UPCOMING' ? 'bg-info' : 
-            event.status === 'CLOSED' ? 'bg-secondary' : 'bg-warning'
-          }`}>
-            {event.status === 'OPENING' ? 'Đang mở bán' : 
-             event.status === 'UPCOMING' ? 'Sắp mở bán' : 
-             event.status === 'CLOSED' ? 'Hết hạn bán vé' : event.status}
-          </span>
-          <h5 className="card-title fw-bold text-info">{event.name}</h5>
-          <p className="card-text text-muted small mb-3 flex-grow-1">
-            <Calendar size={14} className="me-2" />
-            {new Date(event.startTime).toLocaleDateString('vi-VN')}
-            <br/>
-            <MapPin size={14} className="me-2" />
-            {event.address} {event.provinceName ? `, ${event.provinceName}` : ''}
-          </p>
-          <Link to={`/events/${event.id}`} className="btn btn-outline-light w-100 rounded-pill mt-auto">
-            Xem chi tiết
+        <span className={`pill pill-on-media ${status.pill}`}>{status.label}</span>
+      </div>
+
+      <div className="tile-body">
+        <h3 className="tile-title clamp-2">
+          <Link
+            to={`/events/${event.id}`}
+            className="stretched-link text-decoration-none"
+            style={{ color: 'inherit' }}
+          >
+            {event.name}
           </Link>
+        </h3>
+
+        <div className="tile-meta">
+          <span>{formatDate(event.startTime)}</span>
+        </div>
+        <div className="tile-meta">
+          <span>{getEventLocation(event)}</span>
+        </div>
+
+        <div className="tile-foot">
+          {lowestPrice === null ? (
+            <span className="price-from">Chưa mở bán vé</span>
+          ) : lowestPrice === 0 ? (
+            <span className="price">Miễn phí</span>
+          ) : (
+            <span>
+              <span className="price-from">Từ </span>
+              <span className="price">{formatCurrency(lowestPrice)}</span>
+            </span>
+          )}
+          {event.category?.name && (
+            <span className="price-from text-truncate" style={{ maxWidth: '50%' }}>
+              {event.category.name}
+            </span>
+          )}
         </div>
       </div>
-    </div>
+    </article>
   );
 };
 
