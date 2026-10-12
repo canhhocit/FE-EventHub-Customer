@@ -29,6 +29,21 @@ export const API_BASE_URL =
 export const ORGANIZER_PORTAL_URL =
   import.meta.env.VITE_ORGANIZER_PORTAL_URL || "";
 
+/**
+ * Demo account behind the "quick login" button on the login page: the seeded
+ * customer (Flyway V2/V4) with the most orders and tickets.
+ * Build with VITE_QUICK_LOGIN=false to hide the button.
+ */
+export const QUICK_LOGIN_ACCOUNT =
+  import.meta.env.VITE_QUICK_LOGIN === "false"
+    ? null
+    : {
+        role: "Khách hàng",
+        username: "quangminh",
+        password: "123456",
+        name: "Đặng Quang Minh",
+      };
+
 const FALLBACK_IMAGE =
   "data:image/svg+xml;charset=utf-8," +
   encodeURIComponent(

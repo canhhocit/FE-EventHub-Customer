@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Lock, User, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Lock, User, Loader2, AlertCircle, Eye, EyeOff, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { QUICK_LOGIN_ACCOUNT } from '../utils/constants';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -19,13 +20,12 @@ const Login = () => {
   // Come back to whatever page sent us here.
   const redirectTo = location.state?.from?.pathname || '/';
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const signIn = async (name, pass) => {
     if (loading) return;
     setError('');
     setLoading(true);
     try {
-      const profile = await login(username.trim(), password);
+      const profile = await login(name.trim(), pass);
       toast?.success(`Xin chào ${profile?.fullName || profile?.username || ''}!`);
       navigate(redirectTo, { replace: true });
     } catch (err) {
@@ -33,6 +33,19 @@ const Login = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    signIn(username, password);
+  };
+
+  // Fill the form too, so it's visible which account we're signing in as.
+  const handleQuickLogin = () => {
+    const { username: demoUser, password: demoPass } = QUICK_LOGIN_ACCOUNT;
+    setUsername(demoUser);
+    setPassword(demoPass);
+    signIn(demoUser, demoPass);
   };
 
   return (
@@ -118,6 +131,32 @@ const Login = () => {
               {loading ? 'Đang đăng nhập…' : 'Đăng nhập'}
             </button>
           </form>
+
+          {QUICK_LOGIN_ACCOUNT && (
+            <>
+              <div className="d-flex align-items-center gap-3 my-3">
+                <hr className="divider flex-grow-1 my-0" />
+                <span className="small text-muted">hoặc</span>
+                <hr className="divider flex-grow-1 my-0" />
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm w-100 py-2 d-flex align-items-center justify-content-center gap-2"
+                onClick={handleQuickLogin}
+                disabled={loading}
+              >
+                <Zap size={16} className="flex-shrink-0" />
+                <span>
+                  Đăng nhập nhanh với tư cách{' '}
+                  <span className="text-nowrap">{QUICK_LOGIN_ACCOUNT.role}</span>
+                </span>
+              </button>
+              <p className="text-center text-muted small mt-2 mb-0">
+                Tài khoản mẫu: {QUICK_LOGIN_ACCOUNT.username} · {QUICK_LOGIN_ACCOUNT.name}
+              </p>
+            </>
+          )}
         </div>
 
         <p className="text-center text-muted small mt-4 mb-0">
