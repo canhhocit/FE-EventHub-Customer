@@ -222,6 +222,10 @@ const Checkout = () => {
         return;
       }
 
+      if (paymentMethod === 'PAYOS') {
+        throw new Error('Không thể khởi tạo liên kết thanh toán PayOS. Vui lòng thử lại sau.');
+      }
+
       setSuccess(true);
       await fetchBackendCart().catch(() => {});
       setTimeout(() => navigate('/my-tickets'), 2500);
