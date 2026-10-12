@@ -73,16 +73,11 @@ const Home = () => {
     province: urlProvince,
   });
 
-  /* Navbar viết từ khoá và địa điểm vào query string — đó là nguồn dữ liệu duy
-     nhất cho hai bộ lọc này. Đọc trạng thái qua ref để effect không phải phụ
-     thuộc vào chính nó. */
-  const appliedRef = useRef(applied);
-  appliedRef.current = applied;
-
   useEffect(() => {
-    const current = appliedRef.current;
-    if (current.keyword === urlKeyword && current.province === urlProvince) return;
-    setApplied((prev) => ({ ...prev, keyword: urlKeyword, province: urlProvince }));
+    setApplied((prev) => {
+      if (prev.keyword === urlKeyword && prev.province === urlProvince) return prev;
+      return { ...prev, keyword: urlKeyword, province: urlProvince };
+    });
     setPage(1);
   }, [urlKeyword, urlProvince]);
 

@@ -7,6 +7,7 @@ import {
   Loader2,
   ChevronLeft,
   AlertCircle,
+  Timer,
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
@@ -72,6 +73,19 @@ const Checkout = () => {
   // can't race the redirect and bounce the user back to /cart.
   const settled = useRef(false);
 
+  const HOLD_DURATION_SECONDS = 10 * 60; // 10 phút
+
+  const [timeLeft, setTimeLeft] = useState(() => {
+    const saved = sessionStorage.getItem('checkoutHoldExpiry');
+    if (saved) {
+      const diff = Math.floor((parseInt(saved, 10) - Date.now()) / 1000);
+      if (diff > 0) return diff;
+    }
+    const newExpiry = Date.now() + HOLD_DURATION_SECONDS * 1000;
+    sessionStorage.setItem('checkoutHoldExpiry', String(newExpiry));
+    return HOLD_DURATION_SECONDS;
+  });
+
   const [voucher, setVoucher] = useState(null);
   const [vouchersByEvent, setVouchersByEvent] = useState({});
   const [voucherLoading, setVoucherLoading] = useState(false);
@@ -112,8 +126,32 @@ const Checkout = () => {
     return group?.totalPrice || 0;
   }, [voucher, eventGroups, subtotal]);
 
-  const discount = computeDiscount(voucher, voucherBase);
+  // If items change and voucher no longer applies, voucher is dropped in calculation
+  const activeVoucher = voucherBase > 0 ? voucher : null;
+  const discount = computeDiscount(activeVoucher, voucherBase);
   const total = Math.max(0, subtotal - discount);
+
+  // Countdown timer for 10-minute hold
+  useEffect(() => {
+    if (success || settled.current || items.length === 0) return;
+
+    const timer = setInterval(() => {
+      const saved = sessionStorage.getItem('checkoutHoldExpiry');
+      if (!saved) return;
+      const diff = Math.floor((parseInt(saved, 10) - Date.now()) / 1000);
+      if (diff <= 0) {
+        clearInterval(timer);
+        setTimeLeft(0);
+        sessionStorage.removeItem('checkoutHoldExpiry');
+        sessionStorage.removeItem('checkoutItemIds');
+        toast?.error('Đã hết 10 phút giữ vé! Vé của bạn đã được hoàn lại kho.');
+      } else {
+        setTimeLeft(diff);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [items.length, success, toast]);
 
   // Nothing to pay for → back to the cart.
   useEffect(() => {
@@ -122,11 +160,6 @@ const Checkout = () => {
       navigate('/cart', { replace: true });
     }
   }, [items.length, cartLoading, success, navigate]);
-
-  // Drop a voucher that no longer applies to what's being bought.
-  useEffect(() => {
-    if (voucher && voucherBase <= 0) setVoucher(null);
-  }, [voucher, voucherBase]);
 
   const openVoucherModal = useCallback(
     async (eventId) => {
@@ -173,6 +206,7 @@ const Checkout = () => {
 
       settled.current = true;
       sessionStorage.removeItem('checkoutItemIds');
+      sessionStorage.removeItem('checkoutHoldExpiry');
       const paymentUrl = data.result?.paymentUrl;
 
       // PayOS hands back an external checkout link; the MoMo simulation hands
@@ -212,6 +246,25 @@ const Checkout = () => {
     );
   }
 
+  if (timeLeft <= 0) {
+    return (
+      <div className="container py-5">
+        <div className="panel p-5 text-center mx-auto" style={{ maxWidth: 480 }}>
+          <AlertCircle size={44} className="mb-3 text-danger" />
+          <h1 className="h5 fw-bold mb-2">Đã hết thời gian giữ vé</h1>
+          <p className="text-muted small mb-4">
+            Đã quá 10 phút giữ vé. Để đảm bảo công bằng cho các khách hàng khác, các vé trong đơn hàng đã được tự động hoàn lại hệ thống. Vui lòng quay lại giỏ hàng và đặt lại vé.
+          </p>
+          <div className="d-flex justify-content-center gap-2">
+            <Link to="/cart" className="btn btn-accent px-4 py-2">
+              Quay lại giỏ hàng
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (cartLoading && items.length === 0) {
     return (
       <div className="container py-5 text-center text-muted">
@@ -224,6 +277,13 @@ const Checkout = () => {
   const modalGroup = eventGroups.find((g) => g.eventId === voucherModalEventId);
   const modalVouchers = vouchersByEvent[voucherModalEventId] || [];
 
+  const minutes = Math.floor(timeLeft / 60);
+  const seconds = timeLeft % 60;
+  const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  const isUrgent = timeLeft <= 180;
+  const isCritical = timeLeft <= 60;
+  const progressPercent = Math.max(0, Math.min(100, (timeLeft / HOLD_DURATION_SECONDS) * 100));
+
   return (
     <div className="container py-4">
       <Link
@@ -232,7 +292,90 @@ const Checkout = () => {
       >
         <ChevronLeft size={15} /> Giỏ hàng
       </Link>
-      <h1 className="h4 fw-bold mb-4">Thanh toán</h1>
+      <h1 className="h4 fw-bold mb-3">Thanh toán</h1>
+
+      {/* Ticket Hold Countdown Banner */}
+      <div
+        className="p-3 mb-4 rounded-3 d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 shadow-sm"
+        style={{
+          background: isCritical
+            ? 'linear-gradient(135deg, rgba(220, 53, 69, 0.12) 0%, rgba(220, 53, 69, 0.04) 100%)'
+            : isUrgent
+            ? 'linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 193, 7, 0.04) 100%)'
+            : 'linear-gradient(135deg, rgba(69, 96, 230, 0.10) 0%, rgba(69, 96, 230, 0.03) 100%)',
+          border: `1.5px solid ${
+            isCritical ? 'var(--danger, #dc3545)' : isUrgent ? 'var(--warning, #ffc107)' : 'var(--accent, #4560e6)'
+          }`,
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        <div className="d-flex align-items-center gap-3">
+          <div
+            className="rounded-circle d-flex align-items-center justify-content-center"
+            style={{
+              width: 42,
+              height: 42,
+              background: isCritical
+                ? 'rgba(220, 53, 69, 0.2)'
+                : isUrgent
+                ? 'rgba(255, 193, 7, 0.25)'
+                : 'rgba(69, 96, 230, 0.15)',
+              color: isCritical
+                ? 'var(--danger, #dc3545)'
+                : isUrgent
+                ? '#b57a00'
+                : 'var(--accent, #4560e6)',
+              flexShrink: 0,
+            }}
+          >
+            <Timer size={20} />
+          </div>
+          <div>
+            <div className="d-flex align-items-center gap-2">
+              <span className="fw-bold small" style={{ color: isCritical ? '#dc3545' : 'inherit' }}>
+                Thời gian giữ vé còn lại
+              </span>
+              {isCritical && (
+                <span className="badge bg-danger text-white rounded-pill px-2 py-0" style={{ fontSize: '0.7rem' }}>
+                  Sắp hết hạn
+                </span>
+              )}
+            </div>
+            <div className="text-muted" style={{ fontSize: '0.8125rem' }}>
+              Vé tạm giữ tự động nhả về kho sau 10 phút nếu chưa thanh toán hoàn tất.
+            </div>
+          </div>
+        </div>
+
+        <div className="d-flex align-items-center gap-2 align-self-sm-center">
+          <div
+            className="px-3 py-1 rounded-2 fw-bold font-monospace text-center shadow-sm"
+            style={{
+              fontSize: '1.25rem',
+              letterSpacing: '1px',
+              background: isCritical ? '#dc3545' : isUrgent ? '#e08a00' : 'var(--accent, #4560e6)',
+              color: '#ffffff',
+              minWidth: 88,
+            }}
+          >
+            {formattedTime}
+          </div>
+        </div>
+
+        {/* Thin progress line at bottom */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            height: 3,
+            width: `${progressPercent}%`,
+            background: isCritical ? '#dc3545' : isUrgent ? '#ffc107' : 'var(--accent, #4560e6)',
+            transition: 'width 1s linear',
+          }}
+        />
+      </div>
 
       <div className="row g-4">
         <div className="col-lg-8">

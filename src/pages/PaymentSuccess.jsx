@@ -12,6 +12,7 @@ const PaymentSuccess = () => {
     fetchBackendCart().catch(() => {});
     try {
       sessionStorage.removeItem('checkoutItemIds');
+      sessionStorage.removeItem('checkoutHoldExpiry');
     } catch {
       /* ignore */
     }

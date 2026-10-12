@@ -12,6 +12,11 @@ const PaymentCancel = () => {
   const [restored, setRestored] = useState(false);
 
   useEffect(() => {
+    try {
+      sessionStorage.removeItem('checkoutHoldExpiry');
+    } catch {
+      /* ignore */
+    }
     if (!orderCode) return;
     let cancelled = false;
 
