@@ -38,12 +38,17 @@ const TICKET_STATUS = {
   REFUNDED: { label: 'Đã hoàn tiền', pill: 'pill-neutral' },
 };
 
+const DEFAULT_PAGE_SIZE = 20;
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
 const MyTickets = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
   const [downloading, setDownloading] = useState(null);
   const [expandedOrders, setExpandedOrders] = useState(new Set());
   const [selectedTicketForQr, setSelectedTicketForQr] = useState(null);
@@ -54,11 +59,12 @@ const MyTickets = () => {
     setLoading(true);
     setError('');
     try {
-      const data = await getMyBookings({ page, size: 10 });
+      const data = await getMyBookings({ page, size: pageSize });
       if (data?.code === 1000 && data.result) {
         const content = data.result.content || [];
         setOrders(content);
         setTotalPages(Math.max(data.result.totalPages || 1, 1));
+        setTotalElements(data.result.totalElements ?? content.length);
         // Expand the first order by default so the user immediately sees order details
         if (content.length > 0) {
           setExpandedOrders(new Set([content[0].id]));
@@ -73,11 +79,94 @@ const MyTickets = () => {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, pageSize]);
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  const goToPage = (next) => {
+    setPage(next);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const renderPaginationButtons = () => {
+    const pages = [];
+    const maxVisible = 5;
+    let start = Math.max(1, page - Math.floor(maxVisible / 2));
+    const end = Math.min(totalPages, start + maxVisible - 1);
+
+    if (end - start + 1 < maxVisible) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+
+    return (
+      <div className="pagination-clean m-0">
+        <button
+          type="button"
+          className="page-btn"
+          disabled={page <= 1}
+          onClick={() => goToPage(page - 1)}
+          aria-label="Trang trước"
+        >
+          <ChevronLeft size={16} />
+          <span className="d-none d-sm-inline ms-1">Trước</span>
+        </button>
+
+        {start > 1 && (
+          <>
+            <button
+              type="button"
+              className={`page-btn ${page === 1 ? 'is-active' : ''}`}
+              onClick={() => goToPage(1)}
+            >
+              1
+            </button>
+            {start > 2 && <span className="text-muted px-1">…</span>}
+          </>
+        )}
+
+        {pages.map((p) => (
+          <button
+            key={p}
+            type="button"
+            className={`page-btn ${p === page ? 'is-active' : ''}`}
+            onClick={() => goToPage(p)}
+          >
+            {p}
+          </button>
+        ))}
+
+        {end < totalPages && (
+          <>
+            {end < totalPages - 1 && <span className="text-muted px-1">…</span>}
+            <button
+              type="button"
+              className={`page-btn ${page === totalPages ? 'is-active' : ''}`}
+              onClick={() => goToPage(totalPages)}
+            >
+              {totalPages}
+            </button>
+          </>
+        )}
+
+        <button
+          type="button"
+          className="page-btn"
+          disabled={page >= totalPages}
+          onClick={() => goToPage(page + 1)}
+          aria-label="Trang sau"
+        >
+          <span className="d-none d-sm-inline me-1">Sau</span>
+          <ChevronRight size={16} />
+        </button>
+      </div>
+    );
+  };
 
   const toggleOrderExpand = (orderId) => {
     setExpandedOrders((prev) => {
@@ -133,7 +222,7 @@ const MyTickets = () => {
 
   return (
     <div className="container py-4">
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
         <div>
           <h1 className="h4 fw-bold mb-1">Vé của tôi</h1>
           <p className="text-muted small mb-0">
@@ -144,6 +233,33 @@ const MyTickets = () => {
           <Ticket size={15} /> Khám phá thêm sự kiện
         </Link>
       </div>
+
+      {!loading && !error && orders.length > 0 && (
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+          <p className="text-muted small mb-0">
+            {totalElements} đơn hàng · Trang {page}/{totalPages}
+          </p>
+          <div className="d-flex align-items-center gap-1.5 small text-muted">
+            <span>Mỗi trang:</span>
+            <select
+              className="form-select form-select-sm py-1 px-2 border rounded-pill"
+              style={{ width: 'auto', fontSize: '0.8rem', background: 'var(--surface-1)' }}
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setPage(1);
+              }}
+              aria-label="Chọn số đơn hàng mỗi trang"
+            >
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <option key={size} value={size}>
+                  {size} đơn hàng {size === DEFAULT_PAGE_SIZE ? '(mặc định)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="text-center py-5 text-muted">
@@ -535,29 +651,35 @@ const MyTickets = () => {
         </div>
       )}
 
-      {/* Pagination */}
-      {!loading && !error && totalPages > 1 && (
-        <nav className="d-flex justify-content-center align-items-center gap-2 mt-4">
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm px-3 py-2 d-inline-flex align-items-center gap-1"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            <ChevronLeft size={15} /> Trước
-          </button>
-          <span className="small text-muted px-2">
-            Trang <strong style={{ color: 'var(--text)' }}>{page}</strong> / {totalPages}
-          </span>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm px-3 py-2 d-inline-flex align-items-center gap-1"
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Sau <ChevronRight size={15} />
-          </button>
-        </nav>
+      {/* Pagination Footer */}
+      {!loading && !error && orders.length > 0 && (
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-4 pt-4 border-top">
+          <div className="text-muted small">
+            Hiển thị <strong>{Math.min((page - 1) * pageSize + 1, totalElements)} - {Math.min(page * pageSize, totalElements)}</strong> trong tổng số <strong>{totalElements}</strong> đơn hàng
+          </div>
+          <div className="d-flex flex-wrap align-items-center gap-3">
+            <div className="d-flex align-items-center gap-1.5 small text-muted">
+              <span>Mỗi trang:</span>
+              <select
+                className="form-select form-select-sm py-1 px-2 border rounded-pill"
+                style={{ width: 'auto', fontSize: '0.8rem', background: 'var(--surface-1)' }}
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                aria-label="Chọn số đơn hàng hiển thị mỗi trang"
+              >
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <option key={size} value={size}>
+                    {size} / trang {size === DEFAULT_PAGE_SIZE ? '(mặc định)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {renderPaginationButtons()}
+          </div>
+        </div>
       )}
 
       {/* QR Code Check-in Modal */}

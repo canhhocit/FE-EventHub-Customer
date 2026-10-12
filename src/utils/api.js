@@ -301,7 +301,7 @@ export const getEvents = (params = {}, config = {}) =>
 export const getEventDetail = (id) => api.get(`/events/${id}`).then(unwrap);
 
 // ==================== BLOG & NEWS ====================
-export const getBlogPosts = ({ page = 0, size = 10 } = {}) =>
+export const getBlogPosts = ({ page = 0, size = 20 } = {}) =>
   api.get("/blog/posts", { params: { page, size } }).then(unwrap);
 
 export const getBlogPostBySlug = (slug) =>
@@ -324,7 +324,7 @@ export const removeFromCartApi = (itemId) =>
 export const clearCartApi = () => api.delete("/cart/clear").then(unwrap);
 
 // ==================== ORDERS ====================
-export const getMyBookings = ({ page = 1, size = 10 } = {}) =>
+export const getMyBookings = ({ page = 1, size = 20 } = {}) =>
   api.get("/bookings", { params: { page, size } }).then(unwrap);
 
 /**

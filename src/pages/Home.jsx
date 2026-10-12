@@ -12,8 +12,9 @@ import EventCard from '../components/EventCard';
 import BlogCard from '../components/BlogCard';
 import NewsSlider, { buildSlides } from '../components/NewsSlider';
 
-// 16 vé mỗi trang, 4 vé mỗi dòng
-const PAGE_SIZE = 16;
+// Mặc định 20 vé mỗi trang
+const DEFAULT_PAGE_SIZE = 20;
+const PAGE_SIZE_OPTIONS = [12, 20, 36, 48];
 
 const EMPTY_FILTERS = {
   keyword: '',
@@ -54,6 +55,7 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [totalPages, setTotalPages] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
 
@@ -101,7 +103,7 @@ const Home = () => {
       setLoading(true);
       setError('');
       try {
-        const data = await getEvents({ page, size: PAGE_SIZE, ...applied }, { signal });
+        const data = await getEvents({ page, size: pageSize, ...applied }, { signal });
         if (data?.code === 1000 && data.result) {
           setEvents(data.result.content || []);
           setTotalPages(Math.max(data.result.totalPages || 1, 1));
@@ -118,7 +120,7 @@ const Home = () => {
         setLoading(false);
       }
     },
-    [page, applied],
+    [page, pageSize, applied],
   );
 
   useEffect(() => {
@@ -308,13 +310,34 @@ const Home = () => {
           ))}
         </div>
 
-        {/* 3. Dòng công cụ: số kết quả + lọc giá */}
+        {/* 3. Dòng công cụ: số kết quả + chọn số item/trang + lọc giá */}
         <div className="filter-bar justify-content-between mb-4">
-          <p className="text-muted small mb-0">
-            {loading
-              ? 'Đang tải danh sách vé…'
-              : `${totalElements} sự kiện · trang ${page}/${totalPages}`}
-          </p>
+          <div className="d-flex align-items-center gap-3 flex-wrap">
+            <p className="text-muted small mb-0">
+              {loading
+                ? 'Đang tải danh sách vé…'
+                : `${totalElements} sự kiện · trang ${page}/${totalPages}`}
+            </p>
+            <div className="d-flex align-items-center gap-1.5 small text-muted">
+              <span>Mỗi trang:</span>
+              <select
+                className="form-select form-select-sm py-1 px-2 border rounded-pill"
+                style={{ width: 'auto', fontSize: '0.8rem', background: 'var(--surface-1)' }}
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                aria-label="Chọn số sự kiện mỗi trang"
+              >
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <option key={size} value={size}>
+                    {size} sự kiện {size === DEFAULT_PAGE_SIZE ? '(mặc định)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
           <div className="filter-bar">
             <div className="position-relative" ref={priceRef}>
@@ -362,7 +385,7 @@ const Home = () => {
           </div>
         </div>
 
-        {/* 4. Lưới vé: 4 vé mỗi dòng, 16 vé mỗi trang */}
+        {/* 4. Lưới vé: 4 vé mỗi dòng */}
         {error ? (
           <div className="panel p-5 text-center">
             <h3 className="h6 fw-bold mb-2">Không tải được sự kiện</h3>
@@ -401,7 +424,35 @@ const Home = () => {
               ))}
             </div>
 
-            {totalPages > 1 && renderPaginationButtons()}
+            {totalElements > 0 && (
+              <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-4 pt-4 border-top">
+                <div className="text-muted small">
+                  Hiển thị <strong>{Math.min((page - 1) * pageSize + 1, totalElements)} - {Math.min(page * pageSize, totalElements)}</strong> trong tổng số <strong>{totalElements}</strong> sự kiện
+                </div>
+                <div className="d-flex flex-wrap align-items-center gap-3">
+                  <div className="d-flex align-items-center gap-1.5 small text-muted">
+                    <span>Mỗi trang:</span>
+                    <select
+                      className="form-select form-select-sm py-1 px-2 border rounded-pill"
+                      style={{ width: 'auto', fontSize: '0.8rem', background: 'var(--surface-1)' }}
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setPage(1);
+                      }}
+                      aria-label="Chọn số lượng hiển thị mỗi trang"
+                    >
+                      {PAGE_SIZE_OPTIONS.map((size) => (
+                        <option key={size} value={size}>
+                          {size} / trang {size === DEFAULT_PAGE_SIZE ? '(mặc định)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {renderPaginationButtons()}
+                </div>
+              </div>
+            )}
           </>
         )}
 
