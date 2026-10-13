@@ -131,7 +131,7 @@ const BlogDetail = () => {
       </nav>
 
       <div className="row justify-content-center">
-        <div className="col-lg-9 col-xl-8">
+        <div className="col-12 col-lg-9 col-xl-8" style={{ minWidth: 0, maxWidth: 840 }}>
           {/* Back button */}
           <Link to="/blog" className="text-muted text-decoration-none d-inline-flex align-items-center gap-1 mb-4 small fw-semibold hover-primary">
             <ChevronLeft size={16} /> Quay lại danh sách bài viết
@@ -149,7 +149,15 @@ const BlogDetail = () => {
               </div>
             )}
 
-            <h1 className="display-6 fw-bold mb-3 lh-sm" style={{ color: 'var(--text)' }}>
+            <h1
+              className="fw-bold mb-3 lh-sm"
+              style={{
+                color: 'var(--text, #111827)',
+                fontSize: 'clamp(1.5rem, 2.8vw, 2.25rem)',
+                wordBreak: 'break-word',
+                lineHeight: 1.3,
+              }}
+            >
               {post.title}
             </h1>
 
@@ -179,28 +187,50 @@ const BlogDetail = () => {
 
           {/* Thumbnail */}
           {post.thumbnail && (
-            <div className="rounded-3 overflow-hidden mb-4 border shadow-xs" style={{ maxHeight: '440px' }}>
+            <div
+              className="rounded-4 overflow-hidden mb-4 border shadow-xs"
+              style={{ maxHeight: 460, width: '100%', backgroundColor: 'var(--surface-2, #f8fafc)' }}
+            >
               <img
                 src={getImageUrl(post.thumbnail)}
                 alt={post.title}
-                className="w-100 h-100 object-fit-cover"
+                className="w-100 object-fit-cover"
+                style={{ maxHeight: 460, width: '100%', objectFit: 'cover' }}
               />
             </div>
           )}
 
           {/* Summary Lead */}
           {post.summary && (
-            <div className="p-3 p-md-4 rounded-3 mb-4 panel border-start border-4 border-primary bg-light">
-              <p className="fs-5 text-dark mb-0 fst-italic lh-base">
+            <div
+              className="p-3 p-md-4 rounded-3 mb-4 border-start border-4"
+              style={{
+                borderLeftColor: 'var(--accent, #4560e6) !important',
+                backgroundColor: 'var(--surface-2, #f8fafc)',
+              }}
+            >
+              <p
+                className="fs-5 mb-0 fst-italic"
+                style={{ color: 'var(--text, #1f2937)', lineHeight: 1.6 }}
+              >
                 "{post.summary}"
               </p>
             </div>
           )}
 
           {/* Article HTML Content */}
-          <article className="blog-article-content mb-5" style={{ color: 'var(--text)' }}>
+          <article
+            className="blog-article-content mb-5"
+            style={{
+              color: 'var(--text, #1f2937)',
+              width: '100%',
+              maxWidth: '100%',
+              overflowWrap: 'break-word',
+              wordBreak: 'break-word',
+            }}
+          >
             <div
-              className="article-html fs-5 lh-lg"
+              className="article-html"
               dangerouslySetInnerHTML={{ __html: post.content || "<p>Nội dung đang được cập nhật...</p>" }}
             />
           </article>
@@ -275,29 +305,105 @@ const BlogDetail = () => {
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
-        .blog-article-content p {
+        .blog-article-content {
+          font-size: 1.0625rem;
+          line-height: 1.85;
+          max-width: 100%;
+        }
+        .blog-article-content img,
+        .article-html img {
+          max-width: 100% !important;
+          height: auto !important;
+          display: block;
+          margin: 1.75rem auto;
+          border-radius: 12px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+          object-fit: contain;
+        }
+        .blog-article-content p:has(img),
+        .article-html p:has(img),
+        .blog-article-content figure,
+        .article-html figure {
+          text-align: center;
+          margin: 1.75rem 0;
+          max-width: 100% !important;
+        }
+        .blog-article-content figcaption,
+        .article-html figcaption {
+          font-size: 0.875rem;
           color: var(--text-dim);
-          margin-bottom: 1.5rem;
+          margin-top: 0.5rem;
+          font-style: italic;
+          text-align: center;
+        }
+        .blog-article-content iframe,
+        .article-html iframe,
+        .blog-article-content video,
+        .article-html video {
+          max-width: 100% !important;
+          width: 100% !important;
+          aspect-ratio: 16 / 9;
+          height: auto !important;
+          border-radius: 12px;
+          margin: 1.75rem auto;
+          display: block;
+          border: 0;
+        }
+        .blog-article-content p {
+          color: var(--text-dim, #334155);
+          margin-bottom: 1.35rem;
+          line-height: 1.85;
         }
         .blog-article-content h2, 
         .blog-article-content h3, 
         .blog-article-content h4 {
-          color: var(--text);
+          color: var(--text, #0f172a);
           font-weight: 700;
-          margin-top: 2rem;
+          margin-top: 2.25rem;
           margin-bottom: 1rem;
+          line-height: 1.35;
+        }
+        .blog-article-content h2 { font-size: 1.5rem; }
+        .blog-article-content h3 { font-size: 1.25rem; }
+        .blog-article-content h4 { font-size: 1.125rem; }
+        .blog-article-content blockquote {
+          border-left: 4px solid var(--accent, #4560e6) !important;
+          background: var(--surface-2, #f8fafc);
+          padding: 1rem 1.5rem;
+          border-radius: 0 10px 10px 0;
+          margin: 1.75rem 0;
+          font-style: italic;
+          color: var(--text, #1e293b);
+        }
+        .blog-article-content table {
+          width: 100% !important;
+          max-width: 100%;
+          border-collapse: collapse;
+          margin: 1.75rem 0;
+          overflow-x: auto;
+          display: block;
+        }
+        .blog-article-content th,
+        .blog-article-content td {
+          padding: 0.75rem 1rem;
+          border: 1px solid var(--border, #e2e8f0);
+        }
+        .blog-article-content th {
+          background: var(--surface-2, #f8fafc);
+          font-weight: 600;
         }
         .blog-article-content ul, 
         .blog-article-content ol {
-          color: var(--text-dim);
-          margin-bottom: 1.5rem;
-          padding-left: 1.5rem;
+          color: var(--text-dim, #334155);
+          margin-bottom: 1.35rem;
+          padding-left: 1.75rem;
         }
         .blog-article-content li {
           margin-bottom: 0.5rem;
+          line-height: 1.75;
         }
         .blog-article-content strong {
-          color: var(--text);
+          color: var(--text, #0f172a);
         }
         .hover-primary:hover {
           color: var(--accent) !important;
