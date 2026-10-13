@@ -253,7 +253,7 @@ const MyTickets = () => {
             >
               {PAGE_SIZE_OPTIONS.map((size) => (
                 <option key={size} value={size}>
-                  {size} đơn hàng {size === DEFAULT_PAGE_SIZE ? '(mặc định)' : ''}
+                  {size} đơn hàng {size === DEFAULT_PAGE_SIZE ? '' : ''}
                 </option>
               ))}
             </select>
@@ -672,7 +672,7 @@ const MyTickets = () => {
               >
                 {PAGE_SIZE_OPTIONS.map((size) => (
                   <option key={size} value={size}>
-                    {size} / trang {size === DEFAULT_PAGE_SIZE ? '(mặc định)' : ''}
+                    {size} / trang {size === DEFAULT_PAGE_SIZE ? '' : ''}
                   </option>
                 ))}
               </select>

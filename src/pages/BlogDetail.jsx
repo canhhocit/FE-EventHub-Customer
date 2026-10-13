@@ -102,10 +102,10 @@ const BlogDetail = () => {
   if (!post) {
     return (
       <div className="container py-5 text-center">
-        <div className="glass-card p-5 mx-auto" style={{ maxWidth: '600px' }}>
-          <h3 className="text-white mb-3">Không tìm thấy bài viết</h3>
+        <div className="panel p-5 mx-auto" style={{ maxWidth: '600px' }}>
+          <h3 className="fw-bold mb-3" style={{ color: 'var(--text)' }}>Không tìm thấy bài viết</h3>
           <p className="text-muted mb-4">Bài viết có thể đã bị xóa hoặc đường dẫn không chính xác.</p>
-          <Link to="/blog" className="btn btn-gradient rounded-pill px-4">
+          <Link to="/blog" className="btn btn-accent rounded-pill px-4">
             Quay lại danh sách Blog
           </Link>
         </div>
@@ -114,7 +114,7 @@ const BlogDetail = () => {
   }
 
   return (
-    <div className="container py-4 animate-fade-up">
+    <div className="container py-4">
       {/* Breadcrumb */}
       <nav aria-label="breadcrumb" className="mb-4">
         <ol className="breadcrumb small text-muted">
@@ -142,18 +142,18 @@ const BlogDetail = () => {
             {post.tags && post.tags.length > 0 && (
               <div className="d-flex flex-wrap gap-2 mb-3">
                 {post.tags.map((tag) => (
-                  <span key={tag.id} className="badge bg-primary bg-opacity-20 text-primary border border-primary border-opacity-25 px-3 py-2 rounded-pill small">
+                  <span key={tag.id} className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-20 px-3 py-1.5 rounded-pill small fw-semibold">
                     #{tag.name}
                   </span>
                 ))}
               </div>
             )}
 
-            <h1 className="display-5 fw-bold text-white mb-4 lh-sm">
+            <h1 className="display-6 fw-bold mb-3 lh-sm" style={{ color: 'var(--text)' }}>
               {post.title}
             </h1>
 
-            <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 text-muted small border-bottom border-secondary border-opacity-25 pb-3">
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 text-muted small border-bottom pb-3">
               <div className="d-flex align-items-center gap-4">
                 <span className="d-flex align-items-center gap-2">
                   <Calendar size={16} className="text-muted" />
@@ -167,11 +167,11 @@ const BlogDetail = () => {
 
               <button
                 type="button"
-                className="btn btn-sm btn-outline-secondary rounded-pill d-flex align-items-center gap-2 px-3 text-white"
+                className="btn btn-sm btn-subtle rounded-pill d-flex align-items-center gap-2 px-3"
                 onClick={handleShare}
                 title="Chia sẻ bài viết"
               >
-                {copied ? <Check size={14} className="text-muted" /> : <Share2 size={14} />}
+                {copied ? <Check size={14} className="text-success" /> : <Share2 size={14} />}
                 <span>{copied ? "Đã sao chép link" : "Chia sẻ"}</span>
               </button>
             </div>
@@ -179,7 +179,7 @@ const BlogDetail = () => {
 
           {/* Thumbnail */}
           {post.thumbnail && (
-            <div className="rounded-4 overflow-hidden mb-5 border border-secondary border-opacity-25 shadow-lg" style={{ maxHeight: '420px' }}>
+            <div className="rounded-3 overflow-hidden mb-4 border shadow-xs" style={{ maxHeight: '440px' }}>
               <img
                 src={getImageUrl(post.thumbnail)}
                 alt={post.title}
@@ -190,15 +190,15 @@ const BlogDetail = () => {
 
           {/* Summary Lead */}
           {post.summary && (
-            <div className="p-4 rounded-4 mb-4 glass-card border-primary border-opacity-25 border-start border-4">
-              <p className="fs-5 text-white mb-0 fst-italic lh-base">
+            <div className="p-3 p-md-4 rounded-3 mb-4 panel border-start border-4 border-primary bg-light">
+              <p className="fs-5 text-dark mb-0 fst-italic lh-base">
                 "{post.summary}"
               </p>
             </div>
           )}
 
           {/* Article HTML Content */}
-          <article className="blog-article-content text-light mb-5">
+          <article className="blog-article-content mb-5" style={{ color: 'var(--text)' }}>
             <div
               className="article-html fs-5 lh-lg"
               dangerouslySetInnerHTML={{ __html: post.content || "<p>Nội dung đang được cập nhật...</p>" }}
@@ -208,10 +208,10 @@ const BlogDetail = () => {
           {/* Linked Events Promotion Box (Liên kết trực tiếp tới trang đặt vé) */}
           {eventsData.length > 0 && (
             <div className="my-5">
-              <div className="glass-card p-4 overflow-hidden border border-primary border-opacity-30 position-relative shadow-lg">
+              <div className="panel p-4 overflow-hidden border position-relative shadow-sm">
                 <div className="d-flex align-items-center justify-content-between mb-3">
-                  <span className="badge btn-gradient rounded-pill px-3 py-2 small">
-                    🔥 SỰ KIỆN ĐƯỢC NHẮC TỚI TRONG BÀI
+                  <span className="badge bg-primary text-white rounded-pill px-3 py-1.5 small fw-semibold">
+                    SỰ KIỆN LIÊN KẾT
                   </span>
                   {eventsData.length > 1 && (
                     <div className="d-flex gap-2">
@@ -233,7 +233,7 @@ const BlogDetail = () => {
 
                 <div className="row g-4 align-items-center">
                   <div className="col-md-5">
-                    <div className="rounded-3 overflow-hidden" style={{ height: '180px' }}>
+                    <div className="rounded-3 overflow-hidden border" style={{ height: '180px' }}>
                       <img
                         src={getImageUrl(eventsData[activeEventIndex].imageUrls?.[0])}
                         alt={eventsData[activeEventIndex].name}
@@ -242,7 +242,7 @@ const BlogDetail = () => {
                     </div>
                   </div>
                   <div className="col-md-7">
-                    <h4 className="fw-bold text-white mb-2 text-truncate">
+                    <h4 className="fw-bold text-dark mb-2 text-truncate">
                       {eventsData[activeEventIndex].name}
                     </h4>
                     <div className="d-flex align-items-center gap-3 text-muted small mb-2">
@@ -262,7 +262,7 @@ const BlogDetail = () => {
                     {/* SPA LINK: Chuyển thẳng sang trang đặt vé sự kiện nội bộ */}
                     <Link
                       to={`/events/${eventsData[activeEventIndex].id}`}
-                      className="btn btn-gradient rounded-pill px-4 py-2 fw-bold d-inline-flex align-items-center gap-2"
+                      className="btn btn-accent rounded-pill px-4 py-2 fw-semibold d-inline-flex align-items-center gap-2"
                     >
                       <Ticket size={18} /> ĐẶT VÉ NGAY
                     </Link>

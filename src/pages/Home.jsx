@@ -12,9 +12,9 @@ import EventCard from '../components/EventCard';
 import BlogCard from '../components/BlogCard';
 import NewsSlider, { buildSlides } from '../components/NewsSlider';
 
-// Mặc định 20 vé mỗi trang
+// Mặc định 20 vé mỗi trang theo yêu cầu
 const DEFAULT_PAGE_SIZE = 20;
-const PAGE_SIZE_OPTIONS = [12, 20, 36, 48];
+const PAGE_SIZE_OPTIONS = [10, 20, 40, 60];
 
 const EMPTY_FILTERS = {
   keyword: '',
@@ -332,7 +332,7 @@ const Home = () => {
               >
                 {PAGE_SIZE_OPTIONS.map((size) => (
                   <option key={size} value={size}>
-                    {size} sự kiện {size === DEFAULT_PAGE_SIZE ? '(mặc định)' : ''}
+                    {size} sự kiện {size === DEFAULT_PAGE_SIZE ? '' : ''}
                   </option>
                 ))}
               </select>
@@ -444,7 +444,7 @@ const Home = () => {
                     >
                       {PAGE_SIZE_OPTIONS.map((size) => (
                         <option key={size} value={size}>
-                          {size} / trang {size === DEFAULT_PAGE_SIZE ? '(mặc định)' : ''}
+                          {size} / trang {size === DEFAULT_PAGE_SIZE ? '' : ''}
                         </option>
                       ))}
                     </select>

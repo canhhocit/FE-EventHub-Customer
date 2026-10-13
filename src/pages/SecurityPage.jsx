@@ -24,8 +24,8 @@ const SecurityPage = () => {
         <Link to="/help" className="text-muted text-decoration-none d-inline-flex align-items-center gap-1 mb-3 small fw-semibold">
           <ChevronLeft size={16} /> Quay lại trung tâm trợ giúp
         </Link>
-        <h1 className="display-5 fw-bold text-white mb-3">
-          Khiên bảo vệ cho <span className="text-gradient">chiếc vé của bạn</span>
+        <h1 className="display-6 fw-bold text-dark mb-3">
+          Khiên bảo vệ cho <span className="text-primary">chiếc vé của bạn</span>
         </h1>
         <p className="text-muted">
           Những quy tắc vàng giúp bạn bảo vệ tài khoản, sở hữu vé an toàn và phòng ngừa lừa đảo vé giả trên không gian mạng.
@@ -37,14 +37,14 @@ const SecurityPage = () => {
           <div className="d-flex flex-column gap-5">
             {/* Rule 1 */}
             <div>
-              <h3 className="fw-bold text-white mb-3 d-flex align-items-center gap-2">
-                <ShieldAlert className="text-muted" size={24} /> 1. Tuyệt đối không chia sẻ hình ảnh mã QR
+              <h3 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                <ShieldAlert className="text-primary" size={24} /> 1. Tuyệt đối không chia sẻ hình ảnh mã QR
               </h3>
               <p className="text-muted lh-base">
                 Mã QR trên vé điện tử là thông tin duy nhất xác thực quyền vào cổng của bạn. Khi bạn đăng ảnh khoe vé lên Facebook, Instagram hay TikTok mà để lộ mã QR, kẻ gian hoàn toàn có thể quét lại và check-in chiếm quyền vào cổng trước bạn.
               </p>
-              <div className="p-4 rounded-4 bg-warning bg-opacity-10 border border-warning border-opacity-25">
-                <p className="small text-warning mb-0">
+              <div className="p-3 rounded-3 bg-warning bg-opacity-10 border border-warning border-opacity-25">
+                <p className="small text-dark mb-0">
                   💡 <b>Mẹo:</b> Nếu bạn muốn chia sẻ ảnh vé trên mạng xã hội, hãy dùng công cụ vẽ che kín toàn bộ phần mã QR và mã đơn hàng (Order Code).
                 </p>
               </div>
@@ -52,14 +52,14 @@ const SecurityPage = () => {
 
             {/* Rule 2 */}
             <div>
-              <h3 className="fw-bold text-white mb-3 d-flex align-items-center gap-2">
-                <AlertTriangle className="text-muted" size={24} /> 2. Cảnh giác với lừa đảo vé chuyển nhượng (Resale)
+              <h3 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                <AlertTriangle className="text-warning" size={24} /> 2. Cảnh giác với lừa đảo vé chuyển nhượng (Resale)
               </h3>
               <p className="text-muted lh-base">
                 Các sự kiện cháy vé thường xuất hiện đối tượng rao bán lại vé với chiêu trò lừa đảo tinh vi. Hãy luôn cẩn trọng trước các dấu hiệu sau:
               </p>
-              <div className="glass-card p-4 border border-secondary border-opacity-25">
-                <ul className="list-unstyled mb-0 d-flex flex-column gap-3 text-light small">
+              <div className="panel p-4 border">
+                <ul className="list-unstyled mb-0 d-flex flex-column gap-3 text-dark small">
                   <li className="d-flex align-items-start gap-2">
                     <span className="text-danger fw-bold">✖</span>
                     <span>Yêu cầu chuyển khoản 100% tiền cọc qua tài khoản ngân hàng không chính chủ trước khi gửi vé.</span>
@@ -82,8 +82,8 @@ const SecurityPage = () => {
 
             {/* Rule 3 */}
             <div>
-              <h3 className="fw-bold text-white mb-3 d-flex align-items-center gap-2">
-                <Lock className="text-muted" size={24} /> 3. Bảo mật mật khẩu & tài khoản
+              <h3 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                <Lock className="text-primary" size={24} /> 3. Bảo mật mật khẩu & tài khoản
               </h3>
               <p className="text-muted lh-base">
                 Sử dụng mật khẩu mạnh kết hợp chữ hoa, chữ thường, chữ số và ký tự đặc biệt. Định kỳ cập nhật mật khẩu của bạn tại trang Thông tin cá nhân và tuyệt đối không dùng chung một mật khẩu cho nhiều dịch vụ.
@@ -95,20 +95,20 @@ const SecurityPage = () => {
         {/* Sidebar */}
         <div className="col-lg-4">
           <div className="sticky-top" style={{ top: '6rem' }}>
-            <div className="glass-card p-4 border border-danger border-opacity-40 mb-4">
+            <div className="panel p-4 border border-danger border-opacity-30 mb-4 bg-white">
               <h5 className="fw-bold text-danger mb-3">Phát hiện nghi vấn lừa đảo?</h5>
               <p className="small text-muted mb-4">
                 Nếu bạn nghi ngờ chiếc vé của mình bị kẻ xấu sao chép hoặc phát hiện hành vi giả mạo ban tổ chức, hãy báo cáo ngay cho chúng tôi để hỗ trợ khóa mã vé kịp thời.
               </p>
               <a
                 href="mailto:security@fivetickets.vn"
-                className="btn btn-outline-danger w-100 rounded-pill py-2 fw-bold d-flex align-items-center justify-content-center gap-2 text-decoration-none"
+                className="btn btn-outline-danger w-100 rounded-pill py-2 fw-semibold d-flex align-items-center justify-content-center gap-2 text-decoration-none"
               >
                 <PhoneCall size={16} /> Báo cáo vi phạm
               </a>
             </div>
 
-            <div className="glass-card p-4 border border-secondary border-opacity-25">
+            <div className="panel p-4 border bg-white">
               <div className="d-flex align-items-center gap-2 text-success mb-2 fw-bold">
                 <ShieldCheck size={20} /> Cam kết nền tảng
               </div>
