@@ -5,8 +5,23 @@ import {
   ChevronLeft,
   ChevronRight,
   RotateCcw,
+  Flame,
+  MapPin,
+  Calendar,
 } from 'lucide-react';
-import { getCategories, getEvents, getBlogPosts } from '../utils/api';
+import {
+  getCategories,
+  getEvents,
+  getBlogPosts,
+  getTopFeaturedEvents,
+} from '../utils/api';
+import {
+  getImageUrl,
+  handleImageError,
+  formatDate,
+  formatCurrency,
+  getEventStatus,
+} from '../utils/constants';
 
 import EventCard from '../components/EventCard';
 import BlogCard from '../components/BlogCard';
@@ -62,6 +77,8 @@ const Home = () => {
   const [categories, setCategories] = useState([]);
   const [featuredBlogs, setFeaturedBlogs] = useState([]);
   const [slides, setSlides] = useState([]);
+  const [topFeaturedEvents, setTopFeaturedEvents] = useState([]);
+  const [loadingTopFeatured, setLoadingTopFeatured] = useState(true);
 
   // Bộ lọc giá nằm trong popover nhỏ, thay cho sidebar cũ
   const [priceOpen, setPriceOpen] = useState(false);
@@ -165,6 +182,47 @@ const Home = () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getTopFeaturedEvents()
+      .then((data) => {
+        if (cancelled) return;
+        const list = data?.code === 1000 ? data.result || [] : [];
+        if (Array.isArray(list) && list.length > 0) {
+          setTopFeaturedEvents(list);
+        }
+      })
+      .catch((err) => {
+        console.warn('Lỗi tải top sự kiện nổi bật:', err);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingTopFeatured(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const displayTopEvents = useMemo(() => {
+    if (topFeaturedEvents.length > 0) return topFeaturedEvents.slice(0, 5);
+    if (!loadingTopFeatured && events.length > 0) {
+      return events.slice(0, 5).map((ev) => ({
+        eventId: ev.id,
+        eventName: ev.name,
+        status: ev.status,
+        province: ev.province || ev.address,
+        startTime: ev.startTime,
+        eventImage: ev.imageUrls?.[0],
+        minPrice: ev.ticketTypes?.length
+          ? Math.min(...ev.ticketTypes.map((t) => Number(t.price)).filter(Number.isFinite))
+          : null,
+        ticketsSold: 0,
+        occupancyRate: 0,
+      }));
+    }
+    return [];
+  }, [topFeaturedEvents, events, loadingTopFeatured]);
 
   const activeFilterCount = useMemo(
     () => Object.values(applied).filter((v) => v !== '').length,
@@ -285,6 +343,130 @@ const Home = () => {
     <>
       {/* 1. Banner tin tức cao gần hết màn hình */}
       <NewsSlider slides={slides} />
+
+      {/* 1.5. Top sự kiện nổi bật & bán chạy nhất sàn */}
+      {displayTopEvents.length > 0 && (
+        <section className="top-featured-section py-4 py-lg-5">
+          <div className="container">
+            <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+              <div>
+                <div className="d-flex align-items-center gap-2 mb-1">
+                  <span className="badge rounded-pill bg-danger-subtle text-danger px-2.5 py-1 d-inline-flex align-items-center gap-1.5" style={{ fontSize: '0.75rem', fontWeight: 700 }}>
+                    <Flame size={14} className="text-danger" /> BÁN CHẠY NHẤT
+                  </span>
+                  <span className="text-muted small">Cập nhật theo thời gian thực</span>
+                </div>
+                <h2 className="section-title d-flex align-items-center gap-2">
+                  Top Sự Kiện Nổi Bật &amp; Bán Chạy Nhất
+                </h2>
+                <p className="text-muted small mb-0 mt-1">
+                  Những sự kiện hot nhất đang dẫn đầu về số vé bán ra và tỷ lệ lấp chỗ
+                </p>
+              </div>
+              <a
+                href="#events-section"
+                className="btn btn-sm btn-ghost d-inline-flex align-items-center gap-1 text-primary fw-semibold"
+              >
+                <span>Xem tất cả sự kiện</span>
+                <ChevronRight size={15} />
+              </a>
+            </div>
+
+            <div className="top-featured-grid">
+              {displayTopEvents.map((ev, index) => {
+                const rank = index + 1;
+                const rankClass = rank === 1 ? 'top-rank-1' : rank === 2 ? 'top-rank-2' : rank === 3 ? 'top-rank-3' : 'top-rank-other';
+                const status = getEventStatus(ev.status);
+                const minPrice = ev.minPrice;
+                const occupancy = Number(ev.occupancyRate) || 0;
+                const sold = Number(ev.ticketsSold) || 0;
+
+                return (
+                  <article className="top-card" key={ev.eventId || index}>
+                    <div className="top-card-rank">
+                      <span className={`top-card-rank ${rankClass}`}>
+                        {rank === 1 && <Flame size={13} />}
+                        #{rank}
+                      </span>
+                    </div>
+
+                    <div className="top-card-media">
+                      <img
+                        src={getImageUrl(ev.eventImage)}
+                        onError={handleImageError}
+                        alt={ev.eventName}
+                        loading="lazy"
+                      />
+                      <span className={`pill pill-on-media ${status.pill}`} style={{ left: 'auto', right: 10 }}>
+                        {status.label}
+                      </span>
+                    </div>
+
+                    <div className="top-card-body">
+                      <h3 className="top-card-title clamp-2" title={ev.eventName}>
+                        <Link
+                          to={`/events/${ev.eventId}`}
+                          className="stretched-link text-decoration-none"
+                          style={{ color: 'inherit' }}
+                        >
+                          {ev.eventName}
+                        </Link>
+                      </h3>
+
+                      <div className="top-card-meta">
+                        <Calendar size={13} className="text-muted flex-shrink-0" />
+                        <span className="text-truncate">{formatDate(ev.startTime)}</span>
+                      </div>
+
+                      <div className="top-card-meta">
+                        <MapPin size={13} className="text-muted flex-shrink-0" />
+                        <span className="text-truncate">{ev.province || 'Toàn quốc'}</span>
+                      </div>
+
+                      {sold > 0 && (
+                        <div className="mt-2 pt-2 border-top" style={{ borderColor: 'var(--border)' }}>
+                          <div className="d-flex align-items-center justify-content-between small text-muted mb-1" style={{ fontSize: '0.72rem' }}>
+                            <span>Đã bán: <strong className="text-body">{sold.toLocaleString('vi-VN')} vé</strong></span>
+                            {occupancy > 0 && <span className="text-primary fw-semibold">{Math.min(100, Math.round(occupancy))}%</span>}
+                          </div>
+                          {occupancy > 0 && (
+                            <div className="progress" style={{ height: '4px', background: 'var(--surface-3)', borderRadius: '999px' }}>
+                              <div
+                                className="progress-bar"
+                                style={{
+                                  width: `${Math.min(100, Math.max(10, Math.round(occupancy)))}%`,
+                                  background: rank === 1 ? 'linear-gradient(90deg, #f59e0b, #ef4444)' : 'var(--accent)',
+                                  borderRadius: '999px',
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="top-card-foot mt-auto">
+                        {minPrice === null || minPrice === undefined ? (
+                          <span className="price-from">Chưa mở bán</span>
+                        ) : Number(minPrice) === 0 ? (
+                          <span className="price text-success">Miễn phí</span>
+                        ) : (
+                          <span>
+                            <span className="price-from">Từ </span>
+                            <span className="price text-primary">{formatCurrency(minPrice)}</span>
+                          </span>
+                        )}
+                        <span className="btn-book-hint small fw-semibold text-primary d-inline-flex align-items-center gap-0.5" style={{ fontSize: '0.75rem' }}>
+                          Đặt vé <ChevronRight size={12} />
+                        </span>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       <div className="container py-4 py-lg-5" id="events-section">
         {/* 2. Tiêu đề + thanh chọn loại vé (thay cho sidebar bên trái) */}

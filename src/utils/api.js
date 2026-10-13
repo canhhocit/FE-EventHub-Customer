@@ -298,6 +298,9 @@ export const getCategories = () => api.get("/categories").then(unwrap);
 export const getEvents = (params = {}, config = {}) =>
   api.get("/events/search", { params: clean(params), ...config }).then(unwrap);
 
+export const getTopFeaturedEvents = () =>
+  api.get("/events/top-featured").then(unwrap);
+
 export const getEventDetail = (id) => api.get(`/events/${id}`).then(unwrap);
 
 // ==================== BLOG & NEWS ====================
