@@ -142,9 +142,11 @@ const Navbar = () => {
       <div className="container-fluid px-3 px-lg-4 h-100 d-flex align-items-center gap-2 gap-lg-3">
         {/* Logo */}
         <Link to="/" className="brand-logo-group flex-shrink-0" title="EventTicket Trang chủ">
-          <span className="brand-logo-icon">
-            <Ticket size={18} />
-          </span>
+          <img
+            src="/iconcustomer.png"
+            alt="EventTicket Logo"
+            className="brand-logo-img"
+          />
           <span className="brand-logo-text d-none d-sm-inline">EventTicket</span>
         </Link>
 

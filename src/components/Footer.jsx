@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { Ticket } from 'lucide-react';
 
 const FOOTER_NAV = [
   { to: '/', label: 'Trang chủ' },
@@ -21,18 +20,17 @@ const Footer = () => {
           {/* Cột 1: Thông tin thương hiệu & Công ty */}
           <div className="col-12 col-lg-5">
             <div className="d-flex align-items-center gap-2 mb-3">
-              <span
+              <img
+                src="/iconcustomer.png"
+                alt="EventTicket Logo"
                 style={{
                   width: 28,
                   height: 28,
-                  background: 'var(--accent)',
                   borderRadius: 'var(--r-sm)',
-                  display: 'grid',
-                  placeItems: 'center',
+                  objectFit: 'cover',
+                  boxShadow: '0 2px 6px rgba(17, 24, 39, 0.08)',
                 }}
-              >
-                <Ticket size={16} color="#fff" />
-              </span>
+              />
               <span className="fw-bold fs-5 tracking-tight">EventTicket</span>
             </div>
             <p className="text-muted small mb-3 lh-base">
