@@ -127,14 +127,27 @@ a:hover {
 .on-dark .text-white,
 .on-dark .text-light,
 .news-strip .text-white,
-.news-strip .text-light,
-.badge,
-.badge *,
+.badge.bg-primary,
+.badge.bg-danger,
+.badge.bg-success,
+.badge.bg-dark,
+.badge.bg-secondary,
+.badge.text-white,
 .btn-primary,
 .btn-danger,
 .btn-success,
 .btn-dark {
   color: #fff !important;
+}
+
+.badge.bg-light,
+.badge.text-dark,
+.badge.text-body,
+.badge.text-muted {
+  color: var(--text, #111827) !important;
+}
+.badge.text-primary {
+  color: var(--accent, #4560e6) !important;
 }
 
 .bg-body { background-color: var(--bg) !important; }

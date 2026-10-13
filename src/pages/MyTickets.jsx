@@ -336,7 +336,10 @@ const MyTickets = () => {
                     <div>
                       <div className="d-flex align-items-center gap-2 mb-2">
                         <span className={`pill ${status.pill}`}>{status.label}</span>
-                        <span className="badge rounded-pill bg-light text-dark border px-2 py-1" style={{ fontSize: '0.72rem' }}>
+                        <span
+                          className="badge rounded-pill bg-light text-dark border px-2 py-1"
+                          style={{ fontSize: '0.72rem', color: 'var(--text, #111827)' }}
+                        >
                           {order.paymentMethod}
                         </span>
                         {order.orderCode && (
@@ -688,14 +691,23 @@ const MyTickets = () => {
           <div
             className="modal-backdrop fade show"
             onClick={() => setSelectedTicketForQr(null)}
+            style={{ zIndex: 1050 }}
           />
-          <div className="modal d-block" tabIndex={-1} role="dialog">
-            <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 420 }}>
-              <div className="modal-content shadow-lg border-0 rounded-4 overflow-hidden">
-                <div className="modal-header border-0 pb-0">
+          <div
+            className="modal d-block"
+            tabIndex={-1}
+            role="dialog"
+            style={{ zIndex: 1055, backgroundColor: 'rgba(0,0,0,0.5)' }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setSelectedTicketForQr(null);
+            }}
+          >
+            <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 430, margin: '1.75rem auto' }}>
+              <div className="modal-content shadow-lg border-0 rounded-4 overflow-hidden bg-white">
+                <div className="modal-header border-0 pb-0 pt-3 px-4 d-flex align-items-center justify-content-between">
                   <div className="d-flex align-items-center gap-2">
                     <CheckCircle2 size={18} className="text-success" />
-                    <h3 className="modal-title h6 fw-bold mb-0">Mã QR Check-in</h3>
+                    <h3 className="modal-title h6 fw-bold mb-0 text-dark">Mã QR Check-in</h3>
                   </div>
                   <button
                     type="button"
@@ -705,42 +717,64 @@ const MyTickets = () => {
                   />
                 </div>
 
-                <div className="modal-body text-center p-4">
-                  <div className="fw-semibold text-dark fs-6 mb-1">
+                <div className="modal-body d-flex flex-column align-items-center text-center px-4 py-3">
+                  {/* Event Title */}
+                  <h4
+                    className="fw-bold text-dark fs-6 mb-2 px-2 text-center"
+                    style={{ maxWidth: 360, lineHeight: 1.4 }}
+                  >
                     {selectedTicketForQr.eventName || 'Sự kiện'}
-                  </div>
-                  <div className="badge rounded-pill bg-light text-dark border px-3 py-1 mb-3">
-                    {selectedTicketForQr.ticketTypeName || 'Vé sự kiện'}
+                  </h4>
+
+                  {/* Ticket Type Badge */}
+                  <div className="mb-3">
+                    <span
+                      className="badge rounded-pill px-3 py-1.5 border fw-semibold"
+                      style={{
+                        backgroundColor: '#f1f5f9',
+                        color: '#1e293b',
+                        fontSize: '0.8125rem',
+                        letterSpacing: '0.01em',
+                      }}
+                    >
+                      {selectedTicketForQr.ticketTypeName || 'Vé sự kiện'}
+                    </span>
                   </div>
 
                   {/* QR Code Container */}
-                  <div className="p-3 bg-white rounded-3 border d-inline-block shadow-sm mb-3">
+                  <div
+                    className="p-3 bg-white rounded-3 border shadow-sm mb-3 d-flex align-items-center justify-content-center"
+                    style={{ width: 236, height: 236 }}
+                  >
                     {selectedTicketForQr.qrCode ? (
                       <img
                         src={selectedTicketForQr.qrCode}
                         alt={`QR Code ${selectedTicketForQr.ticketCode}`}
-                        style={{ width: 220, height: 220, objectFit: 'contain' }}
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       />
                     ) : (
                       <div
                         className="d-flex align-items-center justify-content-center text-muted"
-                        style={{ width: 220, height: 220 }}
+                        style={{ width: '100%', height: '100%' }}
                       >
-                        <QrCode size={48} />
+                        <QrCode size={56} />
                       </div>
                     )}
                   </div>
 
                   {/* Ticket Code Display */}
-                  <div className="p-2 rounded bg-light border d-inline-flex align-items-center gap-2 mb-3">
-                    <span className="font-monospace fw-bold text-dark">
+                  <div
+                    className="px-3 py-1.5 rounded-pill border d-inline-flex align-items-center gap-2 mb-3"
+                    style={{ backgroundColor: '#f8fafc' }}
+                  >
+                    <span className="font-monospace fw-bold text-dark" style={{ letterSpacing: '0.04em' }}>
                       {selectedTicketForQr.ticketCode}
                     </span>
                     <button
                       type="button"
-                      className="btn btn-sm p-1 border-0 text-muted hover-primary"
+                      className="btn btn-sm p-1 border-0 text-muted hover-primary d-inline-flex align-items-center"
                       onClick={() => handleCopyTicketCode(selectedTicketForQr.ticketCode)}
-                      title="Sao chép"
+                      title="Sao chép mã vé"
                     >
                       {copiedCode === selectedTicketForQr.ticketCode ? (
                         <Check size={14} className="text-success" />
@@ -750,15 +784,19 @@ const MyTickets = () => {
                     </button>
                   </div>
 
-                  <p className="small text-muted mb-0">
+                  {/* Instruction text */}
+                  <p
+                    className="small text-muted mb-0 px-2"
+                    style={{ maxWidth: 340, lineHeight: 1.5, fontSize: '0.8125rem' }}
+                  >
                     Quý khách vui lòng xuất trình mã QR này tại cửa soát vé để nhân viên quét mã check-in vào sự kiện.
                   </p>
                 </div>
 
-                <div className="modal-footer border-0 pt-0 justify-content-center">
+                <div className="modal-footer border-0 pt-1 pb-4 justify-content-center">
                   <button
                     type="button"
-                    className="btn btn-ghost px-4 py-2"
+                    className="btn btn-ghost px-4 py-1.5 rounded-pill fw-medium"
                     onClick={() => setSelectedTicketForQr(null)}
                   >
                     Đóng
