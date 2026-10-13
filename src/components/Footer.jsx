@@ -9,6 +9,14 @@ const FOOTER_NAV = [
   { to: '/help', label: 'Trung tâm trợ giúp' },
 ];
 
+const DEVELOPERS = [
+  'Phạm Hữu Cảnh',
+  'Đặng Văn Minh',
+  'Trần Trung Nguyên',
+  'Lò Văn Điệp',
+  'Trần Phan Anh',
+];
+
 const Footer = () => {
   return (
     <footer
@@ -18,7 +26,7 @@ const Footer = () => {
       <div className="container py-5">
         <div className="row g-4 justify-content-between">
           {/* Cột 1: Thông tin thương hiệu & Công ty */}
-          <div className="col-12 col-lg-5">
+          <div className="col-12 col-md-6 col-lg-4">
             <div className="d-flex align-items-center gap-2 mb-3">
               <img
                 src="/iconcustomer.png"
@@ -44,7 +52,7 @@ const Footer = () => {
           </div>
 
           {/* Cột 2: Điều hướng nhanh */}
-          <div className="col-6 col-sm-6 col-lg-3">
+          <div className="col-6 col-sm-6 col-md-3 col-lg-2">
             <h6 className="fw-bold mb-3 small text-uppercase" style={{ letterSpacing: '0.05em' }}>
               Liên kết nhanh
             </h6>
@@ -59,8 +67,22 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Cột 3: Thanh toán */}
-          <div className="col-12 col-sm-6 col-lg-4">
+          {/* Cột 3: Đội ngũ phát triển */}
+          <div className="col-6 col-sm-6 col-md-3 col-lg-3">
+            <h6 className="fw-bold mb-3 small text-uppercase" style={{ letterSpacing: '0.05em' }}>
+              Đội ngũ phát triển
+            </h6>
+            <ul className="list-unstyled d-flex flex-column gap-2 mb-0 small">
+              {DEVELOPERS.map((dev) => (
+                <li key={dev} className="text-muted">
+                  {dev}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Cột 4: Thanh toán */}
+          <div className="col-12 col-md-6 col-lg-3">
             <h6 className="fw-bold mb-3 small text-uppercase" style={{ letterSpacing: '0.05em' }}>
               Thanh toán
             </h6>
