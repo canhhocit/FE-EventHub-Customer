@@ -4,6 +4,7 @@ import { Lock, User, Loader2, AlertCircle, Eye, EyeOff, Zap } from 'lucide-react
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { QUICK_LOGIN_ACCOUNT } from '../utils/constants';
+import ForceChangePasswordModal from '../components/common/ForceChangePasswordModal';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -11,6 +12,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showForceChangePassword, setShowForceChangePassword] = useState(false);
 
   const { login } = useAuth();
   const toast = useToast();
@@ -26,10 +28,14 @@ const Login = () => {
     setLoading(true);
     try {
       const profile = await login(name.trim(), pass);
-      toast?.success(`Xin chào ${profile?.fullName || profile?.username || ''}!`);
+      if (profile?.mustChangePassword) {
+        setShowForceChangePassword(true);
+        return;
+      }
+      toast?.success(`Xin chao ${profile?.fullName || profile?.username || ''}!`);
       navigate(redirectTo, { replace: true });
     } catch (err) {
-      setError(err.message || 'Đăng nhập thất bại.');
+      setError(err.message || 'Dang nhap that bai.');
     } finally {
       setLoading(false);
     }
@@ -50,6 +56,14 @@ const Login = () => {
 
   return (
     <div className="container py-5">
+      {showForceChangePassword && (
+        <ForceChangePasswordModal
+          onSuccess={() => {
+            setShowForceChangePassword(false);
+            navigate(redirectTo, { replace: true });
+          }}
+        />
+      )}
       <div className="mx-auto animate-fade-up" style={{ maxWidth: 420 }}>
         <div className="text-center mb-4">
           <h1 className="h3 fw-bold mb-2">Đăng nhập</h1>

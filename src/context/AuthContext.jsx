@@ -164,7 +164,8 @@ export const AuthProvider = ({ children }) => {
     setUser(profile);
     applyToken(newToken);
     setInitializing(false);
-    return profile;
+    // Pass mustChangePassword flag back to caller (Login page)
+    return { ...profile, mustChangePassword: !!data.result?.mustChangePassword };
   };
 
   const register = async (userData) => {
